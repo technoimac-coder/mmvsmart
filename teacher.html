@@ -1,6 +1,11 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
+  <script>
+    if (window.location.hostname.toLowerCase().startsWith('club.') && !window.location.search.includes('mode=student')) {
+      window.location.replace(window.location.protocol + '//' + window.location.host + '/?mode=student');
+    }
+  </script>
   <script src="google-mock.js?v=2.6.0"></script>
   <base target="_top">
   <meta charset="UTF-8">
