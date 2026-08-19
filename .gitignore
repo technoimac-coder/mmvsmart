@@ -1,0 +1,8 @@
+# Uploads and temporary assets
+uploads/
+avatars/
+*.zip
+*.tar.gz
+temp_*/
+.DS_Store
+Thumbs.db

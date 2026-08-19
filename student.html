@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <script src="google-mock.js?v=2.6.0"></script>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="color-scheme" content="light">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>ระบบเลือกชุมนุม - มกุฎเมืองราชวิทยาลัย</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap');
+    body { background: #f4f7f6; font-family: 'Kanit', sans-serif; min-height: 100vh; padding: 20px; }
+    .login-wrapper { display: flex; align-items: center; justify-content: center; min-height: calc(100vh - 40px); }
+    .login-card { display: flex; flex-direction: row; background: #fff; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.1); max-width: 900px; width: 100%; }
+    .login-left { background: #1e40af; color: white; padding: 40px; width: 45%; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+    .login-left img { width: 120px; height: 120px; border-radius: 50%; margin-bottom: 20px; background: white; padding: 5px; }
+    .login-right { padding: 50px 40px; width: 55%; display: flex; flex-direction: column; justify-content: center; }
+    .club-card { border-radius: 15px; transition: transform 0.2s; border: 1px solid #e2e8f0; }
+    .club-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.05); }
+    @media (max-width: 768px) { .login-card { flex-direction: column; } .login-left, .login-right { width: 100%; } }
+  
+    /* Mobile responsive enhancement for students */
+    @media (max-width: 768px) {
+      body { padding: 12px 8px; }
+      .login-card { flex-direction: column; border-radius: 20px; }
+      .login-left, .login-right { width: 100%; }
+      .login-left { padding: 30px 20px; }
+      .login-left img { width: 90px; height: 90px; }
+      .login-right { padding: 30px 20px; }
+      input, select, .form-control { font-size: 16px !important; min-height: 42px; }
+      #dashboardContainer { padding: 0 !important; }
+      .club-card { margin-bottom: 12px; }
+    }
+
+  </style>
+</head>
+<body>
+
+<!-- ================= ส่วนที่ 1: หน้าเข้าสู่ระบบ (Login) ================= -->
+<div class="login-wrapper" id="loginWrapper">
+  <div class="login-card">
+    <div class="login-left">
+      <img src="logo.png" alt="Logo">
+      <h3 class="fw-bold mt-2">MAKUDMUANG <br>CLUB SYSTEM</h3>
+      <p class="mb-4">ระบบลงทะเบียนชุมนุม<br>Smart Class System</p>
+      <small style="opacity: 0.8;">โรงเรียนมกุฎเมืองราชวิทยาลัย</small>
+    </div>
+
+    <div class="login-right">
+      <h4 class="fw-bold text-primary mb-1">เข้าสู่ระบบเลือกชุมนุม</h4>
+      <p class="text-muted small mb-4">กรุณากรอกรหัสประจำตัวเพื่อเริ่มต้น</p>
+      
+      <div class="mb-4">
+        <label class="form-label small fw-bold">รหัสประจำตัวนักเรียน</label>
+        <input type="text" id="stuId" class="form-control" placeholder="เช่น 7970" onkeypress="if(event.key === 'Enter') searchStudent()">
+      </div>
+      <button class="btn btn-primary w-100 py-2 fw-bold" onclick="searchStudent()">➔ เข้าสู่ระบบ</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= ส่วนที่ 2: หน้าแดชบอร์ด (จะแสดงเมื่อล็อกอินผ่าน) ================= -->
+<div id="dashboardContainer" class="container d-none" style="max-width: 1200px;">
+  
+  <!-- ส่วนหัว (Header) แจ้งชื่อนักเรียน -->
+  <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 bg-white p-4 rounded-4 shadow-sm" style="border: 1px solid #e2e8f0;">
+      <div class="d-flex align-items-center gap-3">
+          <div id="studentAvatarHeaderContainer" class="flex-shrink-0">
+              <div class="bg-primary text-white p-3 rounded-circle d-flex align-items-center justify-content-center" style="width: 54px; height: 54px;">
+                  <i class="fa-solid fa-user-graduate fs-4"></i>
+              </div>
+          </div>
+          <div>
+              <h4 class="fw-bold mb-1 text-dark" id="displayStudentName">กำลังโหลดชื่อ...</h4>
+              <p class="text-muted small mb-0">รหัสนักเรียน: <span id="displayStudentId" class="badge bg-light text-primary border fw-bold px-2 py-1">-</span> | ชั้น: <span id="displayStudentClass" class="badge bg-light text-dark border fw-bold px-2 py-1">-</span></p>
+          </div>
+      </div>
+      <div class="mt-3 mt-md-0">
+          <button class="btn btn-outline-danger btn-sm px-3 py-2 rounded-pill fw-bold" onclick="logout()">
+              <i class="fa-solid fa-right-from-bracket me-1"></i> ออกจากระบบ
+          </button>
+      </div>
+  </div>
+
+  <!-- กล่องแสดงสถานะชุมนุมปัจจุบัน -->
+  <div id="currentClubAlert" class="mb-4"></div>
+
+  <!-- หัวข้อรายการชุมนุม -->
+  <div class="d-flex justify-content-between align-items-center mb-3">
+      <h5 class="fw-bold text-dark mb-0"><i class="fa-solid fa-list-check text-primary me-2"></i>รายชื่อชุมนุมที่เปิดรับสมัคร</h5>
+      <span class="badge bg-secondary px-3 py-2 rounded-pill font-monospace" id="clubCountBadge">กำลังโหลด...</span>
+  </div>
+
+  <!-- รายการการ์ดชุมนุม (Render แบบ Dynamic) -->
+  <div class="row g-4 mb-5" id="clubListContainer">
+      <div class="col-12 text-center py-5 text-muted">
+          <div class="spinner-border text-primary mb-2" role="status"></div>
+          <p>กำลังโหลดข้อมูลชุมนุม...</p>
+      </div>
+  </div>
+
+</div>
+
+<script>
+  let currentStudent = null;
+
+  // ตรวจสอบเซสชันนักเรียนเมื่อรีเฟรชหน้าเว็บ
+  window.onload = function() {
+    const savedStuId = localStorage.getItem('makudmuang_student_id');
+    if (savedStuId) {
+      document.getElementById('stuId').value = savedStuId;
+      fetchStudentClubDataSilently(savedStuId);
+    }
+  };
+
+  function fetchStudentClubDataSilently(id) {
+    google.script.run
+      .withSuccessHandler(res => {
+        if (res && res.success) {
+          currentStudent = res.student;
+          renderDashboard(res);
+        } else {
+          localStorage.removeItem('makudmuang_student_id');
+        }
+      })
+      .withFailureHandler(err => {
+        console.error(err);
+      })
+      .getStudentClubData(id);
+  }
+
+  function searchStudent() {
+    const id = document.getElementById('stuId').value.trim();
+    if(!id) {
+      Swal.fire('แจ้งเตือน', 'กรุณากรอกรหัสนักเรียน', 'warning');
+      return;
+    }
+    
+    Swal.fire({
+      title: 'กำลังตรวจสอบข้อมูล...',
+      allowOutsideClick: false,
+      didOpen: () => { Swal.showLoading(); }
+    });
+
+    google.script.run
+      .withSuccessHandler(res => {
+        Swal.close();
+        if(!res.success) {
+          Swal.fire('ไม่พบข้อมูล', res.message, 'error');
+          return;
+        }
+        localStorage.setItem('makudmuang_student_id', id);
+        currentStudent = res.student;
+        renderDashboard(res);
+      })
+      .withFailureHandler(err => {
+        Swal.fire('ผิดพลาด', err.message, 'error');
+      })
+      .getStudentClubData(id);
+  }
+
+  function renderDashboard(data) {
+    document.getElementById('loginWrapper').classList.add('d-none');
+    document.getElementById('dashboardContainer').classList.remove('d-none');
+    
+    document.getElementById('displayStudentName').innerText = data.student.name;
+    document.getElementById('displayStudentId').innerText = data.student.id;
+    document.getElementById('displayStudentClass').innerText = data.student.level + '/' + data.student.room;
+
+    // อัปเดตรูปถ่ายโปรไฟล์นักเรียน
+    const avatarContainer = document.getElementById('studentAvatarHeaderContainer');
+    if (data.student.avatar) {
+      avatarContainer.innerHTML = `<img src="${data.student.avatar}?v=${Date.now()}" alt="${data.student.name}" class="shadow-sm" style="width: 58px; height: 72px; object-fit: cover; border-radius: 12px; border: 2px solid #cbd5e1;" onerror="this.outerHTML='<div class=\\'d-flex align-items-center justify-content-center fw-bold shadow-sm\\' style=\\'width: 58px; height: 72px; border-radius: 12px; background: #eff6ff; color: #1e3a8a; font-size: 1.6rem; border: 2px solid #bfdbfe;\\'>🧑‍🎓</div>'">`;
+    } else {
+      const isGirl = data.student.name.includes('หญิง') || data.student.name.includes('นางสาว');
+      avatarContainer.innerHTML = `<div class="d-flex align-items-center justify-content-center fw-bold shadow-sm" style="width: 58px; height: 72px; border-radius: 12px; background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); color: #1e3a8a; font-size: 1.8rem; border: 2px solid #bfdbfe;">
+        ${isGirl ? '👧' : '👦'}
+      </div>`;
+    }
+
+    const alertArea = document.getElementById('currentClubAlert');
+    if(data.student.club) {
+      alertArea.innerHTML = `
+        <div class="alert alert-success border-0 shadow-sm rounded-4 p-4 d-flex align-items-center gap-3">
+          <i class="fa-solid fa-circle-check fs-1 text-success"></i>
+          <div>
+            <h5 class="fw-bold mb-1">คุณได้ลงทะเบียนชุมนุมเรียบร้อยแล้ว</h5>
+            <p class="mb-0">ชุมนุมปัจจุบัน: <strong class="text-dark">${data.student.club}</strong> (ครูที่ปรึกษา: ${data.student.advisor || '-'})</p>
+          </div>
+        </div>
+      `;
+    } else {
+      alertArea.innerHTML = `
+        <div class="alert alert-warning border-0 shadow-sm rounded-4 p-4 d-flex align-items-center gap-3">
+          <i class="fa-solid fa-triangle-exclamation fs-1 text-warning"></i>
+          <div>
+            <h5 class="fw-bold mb-1">คุณยังไม่ได้เลือกชุมนุม</h5>
+            <p class="mb-0 text-muted">กรุณาเลือกชุมนุมที่สนใจจากรายการด้านล่าง</p>
+          </div>
+        </div>
+      `;
+    }
+
+    const clubs = data.clubs || [];
+    document.getElementById('clubCountBadge').innerText = `ทั้งหมด ${clubs.length} ชุมนุม`;
+    const container = document.getElementById('clubListContainer');
+    
+    if(clubs.length === 0) {
+      container.innerHTML = '<div class="col-12 text-center text-muted py-5">ไม่มีชุมนุมที่เปิดรับสำหรับระดับชั้นของคุณ</div>';
+      return;
+    }
+
+    let html = '';
+    clubs.forEach(c => {
+      const isFull = c.current >= c.max;
+      const isSelected = data.student.club === c.name;
+      let btnHtml = '';
+
+      if(isSelected) {
+        btnHtml = `<button class="btn btn-success w-100 rounded-pill fw-bold" disabled><i class="fa-solid fa-check me-1"></i> ชุมนุมของคุณ</button>`;
+      } else if(isFull) {
+        btnHtml = `<button class="btn btn-secondary w-100 rounded-pill fw-bold" disabled>เต็มแล้ว (${c.current}/${c.max})</button>`;
+      } else {
+        btnHtml = `<button class="btn btn-primary w-100 rounded-pill fw-bold" onclick="selectClub('${c.name}')"><i class="fa-solid fa-plus me-1"></i> เลือกชุมนุมนี้</button>`;
+      }
+
+      html += `
+        <div class="col-md-6 col-lg-4">
+          <div class="card club-card h-100 p-3 bg-white shadow-sm" style="border-radius: 18px; border: 1px solid #e2e8f0;">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2.5 py-1.5 fw-bold">
+                <i class="fa-solid fa-users me-1"></i> ${c.current}/${c.max} คน
+              </span>
+              <span class="badge bg-light text-muted border rounded-pill px-2 py-1 small">
+                ${c.target_levels || 'ทุกระดับชั้น'}
+              </span>
+            </div>
+            <h5 class="fw-bold text-dark mt-1 mb-2">${c.name}</h5>
+            <p class="text-muted small mb-1"><i class="fa-solid fa-chalkboard-user me-1 text-primary"></i> ครูที่ปรึกษา: <span class="text-dark fw-bold">${c.advisor || '-'}</span></p>
+            <p class="text-muted small mb-3"><i class="fa-solid fa-location-dot me-1 text-danger"></i> ห้อง/สถานที่สอน: <span class="text-dark fw-bold">${c.location || 'ไม่ระบุห้องสอน'}</span></p>
+            <div class="mt-auto pt-2">
+              ${btnHtml}
+            </div>
+          </div>
+        </div>
+      `;
+    });
+    container.innerHTML = html;
+  }
+
+  function selectClub(clubName) {
+    Swal.fire({
+      title: 'ยืนยันการเลือกชุมนุม?',
+      text: `คุณต้องการเลือกชุมนุม "${clubName}" ใช่หรือไม่?`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'ใช่, ยืนยัน',
+      cancelButtonText: 'ยกเลิก',
+      confirmButtonColor: '#1e40af'
+    }).then(result => {
+      if(result.isConfirmed) {
+        Swal.fire({
+          title: 'กำลังบันทึกข้อมูล...',
+          allowOutsideClick: false,
+          didOpen: () => { Swal.showLoading(); }
+        });
+
+        google.script.run
+          .withSuccessHandler(res => {
+            Swal.close();
+            if(res.success) {
+              Swal.fire('สำเร็จ', 'บันทึกการเลือกชุมนุมเรียบร้อยแล้ว', 'success').then(() => {
+                searchStudent();
+              });
+            } else {
+              Swal.fire('ไม่สามารถเลือกได้', res.message, 'error');
+            }
+          })
+          .withFailureHandler(err => {
+            Swal.fire('ผิดพลาด', err.message, 'error');
+          })
+          .studentSelectClub(currentStudent.id, clubName);
+      }
+    });
+  }
+
+  function logout() {
+    localStorage.removeItem('makudmuang_student_id');
+    currentStudent = null;
+    document.getElementById('stuId').value = '';
+    document.getElementById('dashboardContainer').classList.add('d-none');
+    document.getElementById('loginWrapper').classList.remove('d-none');
+  }
+</script>
+</body>
+</html>
