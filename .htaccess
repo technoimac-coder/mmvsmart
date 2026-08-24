@@ -1,1 +1,9 @@
-DirectoryIndex index.php teacher.html index.html
+DirectoryIndex index.php
+Options -Indexes
+
+<IfModule mod_headers.c>
+  # The current teacher/student pages still contain inline scripts and event
+  # handlers. Scope this compatibility policy to MMVSmart only; the stricter
+  # account-wide policy remains in force for all other hosted sites.
+  Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https://images.unsplash.com; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; upgrade-insecure-requests"
+</IfModule>
