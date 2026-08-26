@@ -4,5 +4,6 @@ avatars/
 *.zip
 *.tar.gz
 temp_*/
+scratch/
 .DS_Store
 Thumbs.db

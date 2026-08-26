@@ -7,6 +7,19 @@ header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Headers: Content-Type');
 header('Access-Control-Allow-Methods: POST, GET, OPTIONS');
 
+// Use a server-side session for privileged administration actions.  The
+// existing UI session in localStorage is only a convenience and is never
+// trusted by the academic-year endpoints below.
+session_set_cookie_params([
+    'httponly' => true,
+    'secure' => (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off'),
+    'samesite' => 'Strict',
+    'path' => '/'
+]);
+if (session_status() !== PHP_SESSION_ACTIVE) {
+    session_start();
+}
+
 // Handle preflight OPTIONS request
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit(0);
@@ -35,6 +48,15 @@ if (!$action) {
 
 // Route AJAX requests
 try {
+    if (empty($_SESSION['academic_year_schema_ready'])) {
+        ensureAcademicYearSchema($pdo);
+        $_SESSION['academic_year_schema_ready'] = true;
+    }
+    // Release the session file lock before database/report work so parallel
+    // AJAX requests from the same browser do not block one another.
+    if (!in_array($action, ['processLogin', 'logoutSession'], true)) {
+        session_write_close();
+    }
     $result = routeAction($action, $args, $pdo);
     echo json_encode($result, JSON_UNESCAPED_UNICODE);
 } catch (Exception $e) {
@@ -58,6 +80,9 @@ function routeAction($action, $args, $pdo) {
             
         case 'processLogin':
             return processLogin($args[0], $args[1], $pdo);
+
+        case 'logoutSession':
+            return logoutSession();
             
         case 'updateTeacherAvatar':
             return updateTeacherAvatar($args[0], $args[1], $args[2] ?? '', $pdo);
@@ -85,6 +110,18 @@ function routeAction($action, $args, $pdo) {
             
         case 'adminAddStudent':
             return adminAddStudent($args[0], $args[1], $args[2], $args[3], $args[4], $pdo);
+
+        case 'getAcademicYearSetupData':
+            return getAcademicYearSetupData($pdo);
+
+        case 'applyAcademicYearImport':
+            return applyAcademicYearImport($args[0], $args[1], $args[2] ?? [], $pdo);
+
+        case 'listAcademicYearBackups':
+            return listAcademicYearBackups($pdo);
+
+        case 'restoreAcademicYearBackup':
+            return restoreAcademicYearBackup($args[0], $pdo);
             
         case 'getAdminLogs':
             return getAdminLogs($pdo);
@@ -316,6 +353,11 @@ function processLogin($user, $pass, $pdo) {
     
     $username = $foundUser['username'];
     $isAdmin = ($username === '1240800191192' || $username === '1229900316190');
+
+    session_regenerate_id(true);
+    $_SESSION['username'] = trim($username);
+    $_SESSION['teacher_name'] = trim($foundUser['name']);
+    $_SESSION['is_admin'] = $isAdmin;
     
     // Check if club admin
     $stmtAdmin = $pdo->prepare("SELECT COUNT(*) FROM club_admins WHERE username = ?");
@@ -592,11 +634,258 @@ function adminAddUser($user, $pass, $name, $advisoryRoom, $headLevel, $avatarBas
 
 function adminAddStudent($no, $id, $name, $level, $room, $pdo) {
     try {
-        $stmt = $pdo->prepare("INSERT INTO students (no, student_id, name, level, room) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE no = VALUES(no), name = VALUES(name), level = VALUES(level), room = VALUES(room)");
-        $stmt->execute([$no, trim($id), trim($name), trim($level), trim($room)]);
+        $year = currentAcademicYear($pdo);
+        $stmt = $pdo->prepare("INSERT INTO students (no, student_id, name, level, room, is_active, academic_year) VALUES (?, ?, ?, ?, ?, 1, ?) ON DUPLICATE KEY UPDATE no = VALUES(no), name = VALUES(name), level = VALUES(level), room = VALUES(room), is_active = 1, academic_year = VALUES(academic_year)");
+        $stmt->execute([$no, trim($id), trim($name), trim($level), trim($room), $year]);
         return ['success' => true, 'message' => 'เพิ่มข้อมูลนักเรียนสำเร็จ!'];
     } catch (Exception $e) {
         return ['success' => false, 'message' => $e->getMessage()];
+    }
+}
+
+function logoutSession() {
+    $_SESSION = [];
+    if (ini_get('session.use_cookies')) {
+        $params = session_get_cookie_params();
+        setcookie(session_name(), '', time() - 42000, $params['path'], $params['domain'] ?? '', $params['secure'], $params['httponly']);
+    }
+    session_destroy();
+    return ['success' => true];
+}
+
+/**
+ * Add the roster-management columns/tables without changing historical
+ * attendance, behaviour, reward or volunteer records.
+ */
+function ensureAcademicYearSchema($pdo) {
+    $dbName = $pdo->query('SELECT DATABASE()')->fetchColumn();
+    $columnStmt = $pdo->prepare("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'students' AND COLUMN_NAME = ?");
+
+    $columnStmt->execute([$dbName, 'is_active']);
+    if ((int)$columnStmt->fetchColumn() === 0) {
+        $pdo->exec("ALTER TABLE students ADD COLUMN is_active TINYINT(1) NOT NULL DEFAULT 1");
+    }
+    $columnStmt->execute([$dbName, 'academic_year']);
+    if ((int)$columnStmt->fetchColumn() === 0) {
+        $pdo->exec("ALTER TABLE students ADD COLUMN academic_year VARCHAR(9) NULL");
+    }
+
+    $pdo->exec("CREATE TABLE IF NOT EXISTS academic_year_settings (
+        id TINYINT UNSIGNED NOT NULL PRIMARY KEY,
+        current_year VARCHAR(9) NOT NULL,
+        updated_at DATETIME NOT NULL,
+        updated_by VARCHAR(255) NOT NULL
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+    $pdo->exec("CREATE TABLE IF NOT EXISTS student_roster_archives (
+        id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+        batch_id VARCHAR(40) NOT NULL,
+        academic_year VARCHAR(9) NOT NULL,
+        archived_at DATETIME NOT NULL,
+        archived_by VARCHAR(255) NOT NULL,
+        student_id VARCHAR(100) NOT NULL,
+        student_no VARCHAR(20) NOT NULL,
+        student_name VARCHAR(255) NOT NULL,
+        level VARCHAR(30) NOT NULL,
+        room VARCHAR(30) NOT NULL,
+        avatar TEXT NULL,
+        was_active TINYINT(1) NOT NULL DEFAULT 1,
+        UNIQUE KEY uq_roster_batch_student (batch_id, student_id),
+        KEY idx_roster_batch (batch_id),
+        KEY idx_roster_year (academic_year)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+    $pdo->exec("CREATE TABLE IF NOT EXISTS student_roster_imports (
+        id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+        batch_id VARCHAR(40) NOT NULL UNIQUE,
+        from_year VARCHAR(9) NOT NULL,
+        to_year VARCHAR(9) NOT NULL,
+        imported_count INT UNSIGNED NOT NULL,
+        deactivated_count INT UNSIGNED NOT NULL,
+        club_members_reset TINYINT(1) NOT NULL DEFAULT 0,
+        created_at DATETIME NOT NULL,
+        created_by VARCHAR(255) NOT NULL,
+        KEY idx_import_created (created_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+    $indexStmt = $pdo->prepare("SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'students' AND INDEX_NAME = 'idx_students_active_class'");
+    $indexStmt->execute([$dbName]);
+    if ((int)$indexStmt->fetchColumn() === 0) {
+        $pdo->exec("CREATE INDEX idx_students_active_class ON students (is_active, level, room, no)");
+    }
+}
+
+function requireAdminSession() {
+    if (empty($_SESSION['is_admin']) || empty($_SESSION['username'])) {
+        throw new RuntimeException('เซสชันผู้ดูแลระบบหมดอายุ กรุณาออกจากระบบแล้วเข้าสู่ระบบใหม่');
+    }
+    return trim($_SESSION['teacher_name'] ?? $_SESSION['username']);
+}
+
+function validateAcademicYear($year) {
+    $year = trim((string)$year);
+    if (!preg_match('/^[0-9]{4}$/', $year)) {
+        throw new InvalidArgumentException('ปีการศึกษาต้องเป็นตัวเลข 4 หลัก เช่น 2569');
+    }
+    return $year;
+}
+
+function normalizeRosterRows($rows) {
+    if (!is_array($rows) || count($rows) < 1 || count($rows) > 5000) {
+        throw new InvalidArgumentException('ไฟล์ต้องมีรายชื่อนักเรียน 1-5,000 คน');
+    }
+
+    $normalized = [];
+    $seenIds = [];
+    foreach ($rows as $index => $row) {
+        $line = $index + 2;
+        if (!is_array($row)) throw new InvalidArgumentException("ข้อมูลแถว {$line} ไม่ถูกต้อง");
+        $no = trim((string)($row['no'] ?? ''));
+        $id = trim((string)($row['studentId'] ?? $row['student_id'] ?? ''));
+        $name = trim((string)($row['name'] ?? ''));
+        $level = trim((string)($row['level'] ?? ''));
+        $room = trim((string)($row['room'] ?? ''));
+        $level = preg_replace('/^ม\.?\s*([1-6])$/u', 'ม.$1', $level);
+
+        if (!preg_match('/^[0-9]{1,3}$/', $no) || (int)$no < 1) throw new InvalidArgumentException("เลขที่ในแถว {$line} ไม่ถูกต้อง");
+        if (!preg_match('/^[0-9A-Za-z_-]{3,30}$/', $id)) throw new InvalidArgumentException("รหัสนักเรียนในแถว {$line} ไม่ถูกต้อง");
+        if ($name === '' || mb_strlen($name, 'UTF-8') > 255 || preg_match('/[<>{}\x00-\x1F]/u', $name)) throw new InvalidArgumentException("ชื่อในแถว {$line} ไม่ถูกต้อง");
+        if (!preg_match('/^ม\.[1-6]$/u', $level)) throw new InvalidArgumentException("ชั้นเรียนในแถว {$line} ต้องเป็น ม.1 ถึง ม.6");
+        if (!preg_match('/^(?:[1-9]|1[0-2])$/', $room)) throw new InvalidArgumentException("ห้องในแถว {$line} ต้องเป็น 1 ถึง 12");
+        if (isset($seenIds[$id])) throw new InvalidArgumentException("รหัสนักเรียน {$id} ซ้ำในไฟล์ (แถว {$line})");
+
+        $seenIds[$id] = true;
+        $normalized[] = ['no' => (string)(int)$no, 'student_id' => $id, 'name' => $name, 'level' => $level, 'room' => $room];
+    }
+    return $normalized;
+}
+
+function currentAcademicYear($pdo) {
+    $year = $pdo->query("SELECT current_year FROM academic_year_settings WHERE id = 1")->fetchColumn();
+    return $year ?: (string)((int)date('Y') + 543);
+}
+
+function archiveCurrentRoster($pdo, $batchId, $year, $adminName) {
+    $stmt = $pdo->prepare("INSERT INTO student_roster_archives
+        (batch_id, academic_year, archived_at, archived_by, student_id, student_no, student_name, level, room, avatar, was_active)
+        SELECT ?, ?, NOW(), ?, student_id, no, name, level, room, avatar, is_active FROM students");
+    $stmt->execute([$batchId, $year, $adminName]);
+    return $stmt->rowCount();
+}
+
+function getAcademicYearSetupData($pdo) {
+    $adminName = requireAdminSession();
+    ensureAcademicYearSchema($pdo);
+    $counts = $pdo->query("SELECT SUM(is_active = 1) active_count, SUM(is_active = 0) inactive_count FROM students")->fetch();
+    return [
+        'success' => true,
+        'currentYear' => currentAcademicYear($pdo),
+        'activeCount' => (int)($counts['active_count'] ?? 0),
+        'inactiveCount' => (int)($counts['inactive_count'] ?? 0),
+        'adminName' => $adminName
+    ];
+}
+
+function applyAcademicYearImport($rows, $targetYear, $options, $pdo) {
+    $adminName = requireAdminSession();
+    ensureAcademicYearSchema($pdo);
+    $targetYear = validateAcademicYear($targetYear);
+    $rows = normalizeRosterRows($rows);
+    $deactivateMissing = !isset($options['deactivateMissing']) || (bool)$options['deactivateMissing'];
+    $resetClubMembers = !empty($options['resetClubMembers']);
+    $fromYear = currentAcademicYear($pdo);
+    $batchId = bin2hex(random_bytes(16));
+
+    try {
+        $pdo->beginTransaction();
+        archiveCurrentRoster($pdo, $batchId, $fromYear, $adminName);
+
+        $deactivated = 0;
+        if ($deactivateMissing) {
+            $pdo->exec("UPDATE students SET is_active = 0 WHERE is_active <> 0");
+        }
+
+        $upsert = $pdo->prepare("INSERT INTO students (no, student_id, name, level, room, is_active, academic_year)
+            VALUES (?, ?, ?, ?, ?, 1, ?)
+            ON DUPLICATE KEY UPDATE no = VALUES(no), name = VALUES(name), level = VALUES(level), room = VALUES(room), is_active = 1, academic_year = VALUES(academic_year)");
+        foreach ($rows as $row) {
+            $upsert->execute([$row['no'], $row['student_id'], $row['name'], $row['level'], $row['room'], $targetYear]);
+        }
+        if ($deactivateMissing) {
+            $countStmt = $pdo->prepare("SELECT COUNT(*) FROM student_roster_archives a
+                WHERE a.batch_id = ? AND a.was_active = 1
+                AND NOT EXISTS (SELECT 1 FROM students s WHERE s.student_id = a.student_id AND s.is_active = 1)");
+            $countStmt->execute([$batchId]);
+            $deactivated = (int)$countStmt->fetchColumn();
+        }
+
+        if ($resetClubMembers) {
+            $pdo->exec("DELETE FROM club_members");
+        }
+        $setting = $pdo->prepare("INSERT INTO academic_year_settings (id, current_year, updated_at, updated_by)
+            VALUES (1, ?, NOW(), ?) ON DUPLICATE KEY UPDATE current_year = VALUES(current_year), updated_at = NOW(), updated_by = VALUES(updated_by)");
+        $setting->execute([$targetYear, $adminName]);
+        $audit = $pdo->prepare("INSERT INTO student_roster_imports
+            (batch_id, from_year, to_year, imported_count, deactivated_count, club_members_reset, created_at, created_by)
+            VALUES (?, ?, ?, ?, ?, ?, NOW(), ?)");
+        $audit->execute([$batchId, $fromYear, $targetYear, count($rows), $deactivated, $resetClubMembers ? 1 : 0, $adminName]);
+        $pdo->commit();
+
+        return ['success' => true, 'message' => 'ขึ้นปีการศึกษาใหม่เรียบร้อยแล้ว', 'batchId' => $batchId,
+            'importedCount' => count($rows), 'deactivatedCount' => $deactivated, 'targetYear' => $targetYear];
+    } catch (Exception $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        throw $e;
+    }
+}
+
+function listAcademicYearBackups($pdo) {
+    requireAdminSession();
+    ensureAcademicYearSchema($pdo);
+    $stmt = $pdo->query("SELECT i.batch_id batchId, i.from_year fromYear, i.to_year toYear, i.imported_count importedCount,
+        i.deactivated_count deactivatedCount, i.club_members_reset clubMembersReset, i.created_at createdAt,
+        i.created_by createdBy, COUNT(a.id) backupCount
+        FROM student_roster_imports i LEFT JOIN student_roster_archives a ON a.batch_id = i.batch_id
+        GROUP BY i.id ORDER BY i.created_at DESC LIMIT 20");
+    return ['success' => true, 'backups' => $stmt->fetchAll()];
+}
+
+function restoreAcademicYearBackup($batchId, $pdo) {
+    $adminName = requireAdminSession();
+    ensureAcademicYearSchema($pdo);
+    $batchId = trim((string)$batchId);
+    if (!preg_match('/^[a-f0-9]{32}$/', $batchId)) throw new InvalidArgumentException('รหัสชุดสำรองไม่ถูกต้อง');
+    $stmt = $pdo->prepare("SELECT academic_year, student_id, student_no, student_name, level, room, avatar, was_active
+        FROM student_roster_archives WHERE batch_id = ? ORDER BY id");
+    $stmt->execute([$batchId]);
+    $backupRows = $stmt->fetchAll();
+    if (!$backupRows) throw new RuntimeException('ไม่พบชุดสำรองที่เลือก');
+
+    $restoreYear = $backupRows[0]['academic_year'];
+    $currentYear = currentAcademicYear($pdo);
+    $safetyBatch = bin2hex(random_bytes(16));
+    try {
+        $pdo->beginTransaction();
+        archiveCurrentRoster($pdo, $safetyBatch, $currentYear, $adminName);
+        $pdo->exec("UPDATE students SET is_active = 0");
+        $upsert = $pdo->prepare("INSERT INTO students (no, student_id, name, level, room, avatar, is_active, academic_year)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE no=VALUES(no), name=VALUES(name), level=VALUES(level), room=VALUES(room), avatar=VALUES(avatar), is_active=VALUES(is_active), academic_year=VALUES(academic_year)");
+        foreach ($backupRows as $row) {
+            $upsert->execute([$row['student_no'], $row['student_id'], $row['student_name'], $row['level'], $row['room'], $row['avatar'], $row['was_active'], $restoreYear]);
+        }
+        $setting = $pdo->prepare("INSERT INTO academic_year_settings (id, current_year, updated_at, updated_by) VALUES (1, ?, NOW(), ?)
+            ON DUPLICATE KEY UPDATE current_year=VALUES(current_year), updated_at=NOW(), updated_by=VALUES(updated_by)");
+        $setting->execute([$restoreYear, $adminName]);
+        $audit = $pdo->prepare("INSERT INTO student_roster_imports
+            (batch_id, from_year, to_year, imported_count, deactivated_count, club_members_reset, created_at, created_by)
+            VALUES (?, ?, ?, ?, 0, 0, NOW(), ?)");
+        $audit->execute([$safetyBatch, $currentYear, $restoreYear, count($backupRows), $adminName]);
+        $pdo->commit();
+        return ['success' => true, 'message' => "กู้คืนรายชื่อนักเรียนปี {$restoreYear} จำนวน " . count($backupRows) . ' คนแล้ว', 'safetyBatchId' => $safetyBatch];
+    } catch (Exception $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        throw $e;
     }
 }
 
@@ -805,7 +1094,7 @@ function getStudentsWithAttendance($level, $room, $date, $teacherName, $pdo) {
     if (!canTeacherAccess($teacherName, $level, $room, $pdo)) return [];
     
     // Get all students in this class
-    $stmt = $pdo->prepare("SELECT no, student_id, name, avatar FROM students WHERE level = ? AND room = ? ORDER BY no ASC");
+    $stmt = $pdo->prepare("SELECT no, student_id, name, avatar FROM students WHERE is_active = 1 AND level = ? AND room = ? ORDER BY no ASC");
     $stmt->execute([$level, $room]);
     $students = $stmt->fetchAll();
     
@@ -881,7 +1170,7 @@ function saveAttendance($records, $level, $room, $date, $teacherName, $pdo) {
 
 function getReportData($date, $pdo) {
     // Totals by grade and room
-    $stmtT = $pdo->query("SELECT level, room, COUNT(*) as c FROM students GROUP BY level, room");
+    $stmtT = $pdo->query("SELECT level, room, COUNT(*) as c FROM students WHERE is_active = 1 GROUP BY level, room");
     $totalStudents = 0;
     $totals = ['overall' => 0, 'grades' => [], 'rooms' => []];
     
@@ -944,7 +1233,7 @@ function getIndividualSummary($level, $room, $startDate, $endDate, $teacherName,
     if (!canTeacherAccess($teacherName, $level, $room, $pdo)) return [];
     
     // Get all students in this class
-    $stmt = $pdo->prepare("SELECT no, student_id, name, avatar FROM students WHERE level = ? AND room = ? ORDER BY no ASC");
+    $stmt = $pdo->prepare("SELECT no, student_id, name, avatar FROM students WHERE is_active = 1 AND level = ? AND room = ? ORDER BY no ASC");
     $stmt->execute([$level, $room]);
     $students = $stmt->fetchAll();
     
@@ -1000,7 +1289,7 @@ function exportIndividualExcel($level, $room, $startDate, $endDate, $teacherName
 }
 
 function getAllStudentsForDeduct($pdo) {
-    $stmt = $pdo->query("SELECT no, student_id, name, level, room FROM students ORDER BY level ASC, room ASC, no ASC");
+    $stmt = $pdo->query("SELECT no, student_id, name, level, room FROM students WHERE is_active = 1 ORDER BY level ASC, room ASC, no ASC");
     $students = [];
     while ($row = $stmt->fetch()) {
         $students[] = [
@@ -1051,7 +1340,7 @@ function getRoomDeductionReport($level, $room, $teacherName, $pdo) {
     if (!canTeacherAccess($teacherName, $level, $room, $pdo)) return [];
     
     // Get all students
-    $stmt = $pdo->prepare("SELECT no, student_id, name FROM students WHERE level = ? AND room = ? ORDER BY no ASC");
+    $stmt = $pdo->prepare("SELECT no, student_id, name FROM students WHERE is_active = 1 AND level = ? AND room = ? ORDER BY no ASC");
     $stmt->execute([$level, $room]);
     $students = $stmt->fetchAll();
     
@@ -1425,7 +1714,7 @@ function getRoomRewardReport($level, $room, $teacherName, $pdo) {
     if (!canTeacherAccess($teacherName, $level, $room, $pdo)) return [];
     
     // Get all students
-    $stmt = $pdo->prepare("SELECT no, student_id, name FROM students WHERE level = ? AND room = ? ORDER BY no ASC");
+    $stmt = $pdo->prepare("SELECT no, student_id, name FROM students WHERE is_active = 1 AND level = ? AND room = ? ORDER BY no ASC");
     $stmt->execute([$level, $room]);
     $students = $stmt->fetchAll();
     
@@ -1572,7 +1861,7 @@ function getClubMembers($clubName, $pdo) {
 
 function getStudentById($id, $pdo) {
     // Get student info
-    $stmt = $pdo->prepare("SELECT * FROM students WHERE student_id = ?");
+    $stmt = $pdo->prepare("SELECT * FROM students WHERE is_active = 1 AND student_id = ?");
     $stmt->execute([trim($id)]);
     $student = $stmt->fetch();
     
@@ -1601,7 +1890,7 @@ function getStudentById($id, $pdo) {
 }
 
 function getStudentClubData($id, $pdo) {
-    $stmt = $pdo->prepare("SELECT * FROM students WHERE student_id = ?");
+    $stmt = $pdo->prepare("SELECT * FROM students WHERE is_active = 1 AND student_id = ?");
     $stmt->execute([trim($id)]);
     $student = $stmt->fetch();
     
@@ -1679,7 +1968,7 @@ function studentSelectClub($stuId, $clubName, $pdo) {
         $pdo->beginTransaction();
         
         // Check student
-        $stmtS = $pdo->prepare("SELECT * FROM students WHERE student_id = ?");
+        $stmtS = $pdo->prepare("SELECT * FROM students WHERE is_active = 1 AND student_id = ?");
         $stmtS->execute([trim($stuId)]);
         $student = $stmtS->fetch();
         if (!$student) {
@@ -1869,7 +2158,7 @@ function getClubAttendanceReport($clubName, $pdo) {
 
 function getStudentsWithoutClub($pdo) {
     // Students NOT in club_members
-    $stmt = $pdo->query("SELECT no, student_id, name, level, room FROM students WHERE student_id NOT IN (SELECT student_id FROM club_members) ORDER BY level ASC, room ASC, no ASC");
+    $stmt = $pdo->query("SELECT no, student_id, name, level, room FROM students WHERE is_active = 1 AND student_id NOT IN (SELECT student_id FROM club_members) ORDER BY level ASC, room ASC, no ASC");
     $result = [];
     while ($row = $stmt->fetch()) {
         $result[] = [
@@ -1902,7 +2191,7 @@ function getAdminMembersByClub($clubName, $pdo) {
 function getAdminMembersByRoom($level, $room, $pdo) {
     try {
         // Roster
-        $stmtStu = $pdo->prepare("SELECT no, student_id, name FROM students WHERE level = ? AND room = ? ORDER BY no ASC");
+        $stmtStu = $pdo->prepare("SELECT no, student_id, name FROM students WHERE is_active = 1 AND level = ? AND room = ? ORDER BY no ASC");
         $stmtStu->execute([$level, $room]);
         $students = $stmtStu->fetchAll();
         
@@ -2066,7 +2355,7 @@ function addStudentToClubManual($clubName, $stuId, $teacherName, $pdo) {
         $pdo->beginTransaction();
         
         // Find student details
-        $stmtStu = $pdo->prepare("SELECT no, student_id, name, level, room FROM students WHERE student_id = ?");
+        $stmtStu = $pdo->prepare("SELECT no, student_id, name, level, room FROM students WHERE is_active = 1 AND student_id = ?");
         $stmtStu->execute([$stuId]);
         $student = $stmtStu->fetch();
         
@@ -2308,7 +2597,7 @@ function generateAdminRoomClubsPDF($level, $room, $pdo) {
 
 function getDashboardData($pdo) {
     // Count total, enrolled, pending
-    $stmtT = $pdo->query("SELECT COUNT(*) FROM students");
+    $stmtT = $pdo->query("SELECT COUNT(*) FROM students WHERE is_active = 1");
     $totalStudents = (int)$stmtT->fetchColumn();
     
     $stmtE = $pdo->query("SELECT COUNT(*) FROM club_members");
@@ -2456,6 +2745,11 @@ function toggleClubCreationSystemStatus($currentStatus, $pdo) {
 
 function handleFaceApi($body, $pdo) {
     try {
+        if (empty($_SESSION['academic_year_schema_ready'])) {
+            ensureAcademicYearSchema($pdo);
+            $_SESSION['academic_year_schema_ready'] = true;
+        }
+        session_write_close();
         // Validate secret
         if ($body['secret'] !== FACE_API_SECRET) {
             echo json_encode(['ok' => false, 'error' => 'unauthorized'], JSON_UNESCAPED_UNICODE);
@@ -2466,7 +2760,7 @@ function handleFaceApi($body, $pdo) {
         
         if ($event === 'get_face_roster') {
             // Get all students
-            $stmt = $pdo->query("SELECT student_id, name, level, room FROM students ORDER BY student_id ASC");
+            $stmt = $pdo->query("SELECT student_id, name, level, room FROM students WHERE is_active = 1 ORDER BY student_id ASC");
             $students = [];
             while ($row = $stmt->fetch()) {
                 $lvl = trim($row['level']);
@@ -2489,7 +2783,7 @@ function handleFaceApi($body, $pdo) {
         }
         
         // Find student
-        $stmtS = $pdo->prepare("SELECT name, level, room FROM students WHERE student_id = ?");
+        $stmtS = $pdo->prepare("SELECT name, level, room FROM students WHERE is_active = 1 AND student_id = ?");
         $stmtS->execute([trim($body['student_id'])]);
         $student = $stmtS->fetch();
         
@@ -2572,7 +2866,7 @@ function bulkUploadStudentAvatars($filesArray, $pdo) {
             mkdir(__DIR__ . '/uploads/student_avatars', 0755, true);
         }
         
-        $stmt = $pdo->query("SELECT student_id, name FROM students");
+        $stmt = $pdo->query("SELECT student_id, name FROM students WHERE is_active = 1");
         $students = $stmt->fetchAll();
         $studentIdMap = [];
         foreach ($students as $s) {

@@ -20,6 +20,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Prompt:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="assets/vendor/bootstrap/bootstrap.bundle.min.js?v=5.3.0"></script>
   <script src="assets/vendor/sweetalert2/sweetalert2.all.min.js?v=11.7.12"></script>
+  <script src="assets/vendor/sheetjs/xlsx.full.min.js?v=0.18.5"></script>
   
   <style>
     /* Strict Visibility and Tab Control */
@@ -1488,6 +1489,50 @@
               </div>
             </div>
 
+            <!-- จัดการรายชื่อนักเรียนเมื่อขึ้นปีการศึกษาใหม่ -->
+            <div class="card p-3 shadow-sm mb-4" style="border-left: 5px solid #7c3aed !important; border-radius: 16px;">
+              <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+                <div>
+                  <h6 class="fw-bold mb-1" style="color:#6d28d9;"><i class="fas fa-calendar-check me-1"></i> ขึ้นปีการศึกษาใหม่</h6>
+                  <small class="text-muted">นำเข้า Excel/CSV เพื่อตรวจสอบก่อนบันทึก ระบบสำรองรายชื่อเดิมให้อัตโนมัติและไม่ลบประวัติการเช็กชื่อ/คะแนน/จิตอาสา</small>
+                </div>
+                <span id="academicYearStatus" class="badge bg-secondary">กำลังโหลดข้อมูล...</span>
+              </div>
+              <div class="row g-2 align-items-end mb-3">
+                <div class="col-12 col-md-2">
+                  <label class="form-label small fw-bold">ปีการศึกษาใหม่</label>
+                  <input id="academicTargetYear" class="form-control" inputmode="numeric" maxlength="4" placeholder="2569">
+                </div>
+                <div class="col-12 col-md-6">
+                  <label class="form-label small fw-bold">ไฟล์รายชื่อนักเรียน (.xlsx, .xls, .csv)</label>
+                  <input id="academicRosterFile" type="file" class="form-control" accept=".xlsx,.xls,.csv">
+                </div>
+                <div class="col-6 col-md-2"><button class="btn btn-outline-primary w-100" onclick="downloadAcademicYearTemplate()"><i class="fas fa-download me-1"></i>ไฟล์ตัวอย่าง</button></div>
+                <div class="col-6 col-md-2"><button class="btn btn-primary w-100 fw-bold" onclick="previewAcademicYearFile()"><i class="fas fa-search me-1"></i>ตรวจไฟล์</button></div>
+              </div>
+              <div class="row g-2 mb-3">
+                <div class="col-12 col-lg-6">
+                  <div class="form-check"><input id="academicDeactivateMissing" class="form-check-input" type="checkbox" checked><label class="form-check-label" for="academicDeactivateMissing">ทำผู้ที่ไม่อยู่ในไฟล์เป็น “ไม่ใช้งาน” (แนะนำ)</label></div>
+                  <small class="text-muted">เหมาะสำหรับนักเรียนที่จบ/ย้ายออก โดยยังเก็บประวัติเดิมทั้งหมด</small>
+                </div>
+                <div class="col-12 col-lg-6">
+                  <div class="form-check"><input id="academicResetClubMembers" class="form-check-input" type="checkbox"><label class="form-check-label" for="academicResetClubMembers">ล้างเฉพาะการลงทะเบียนสมาชิกชุมนุมปัจจุบัน</label></div>
+                  <small class="text-muted">ไม่ลบรายชื่อชุมนุมและประวัติเช็กชื่อชุมนุม</small>
+                </div>
+              </div>
+              <div id="academicPreviewSummary" class="alert alert-light border py-2 mb-2">ยังไม่ได้เลือกไฟล์</div>
+              <div class="table-responsive mb-3" style="max-height:310px;">
+                <table class="table table-sm table-bordered align-middle mb-0" id="academicPreviewTable">
+                  <thead class="table-light position-sticky top-0"><tr><th>แถว</th><th>เลขที่</th><th>รหัสนักเรียน</th><th>ชื่อ-นามสกุล</th><th>ชั้น</th><th>ห้อง</th><th>ผลตรวจ</th></tr></thead>
+                  <tbody><tr><td colspan="7" class="text-center text-muted">กด “ตรวจไฟล์” เพื่อดูตัวอย่าง</td></tr></tbody>
+                </table>
+              </div>
+              <button id="academicApplyButton" class="btn w-100 fw-bold text-white" style="background:#7c3aed;" onclick="applyAcademicYearRoster()" disabled><i class="fas fa-database me-1"></i> สำรองข้อมูลและเปลี่ยนปีการศึกษา</button>
+              <hr>
+              <div class="d-flex justify-content-between align-items-center mb-2"><strong>ชุดสำรองล่าสุด</strong><button class="btn btn-sm btn-outline-secondary" onclick="loadAcademicYearBackups()">รีเฟรช</button></div>
+              <div id="academicBackups" class="small text-muted">ยังไม่มีข้อมูล</div>
+            </div>
+
             <!-- 3. ตรวจสอบประวัติการทำรายการ (ทั้งหมด) -->
             <div class="card p-3 shadow-sm mb-4 border-info">
               <h6 class="text-info fw-bold mb-3">📋 ตรวจสอบประวัติการทำรายการ (ทั้งหมด)</h6>
@@ -1578,28 +1623,28 @@
               <div class="d-flex align-items-center mb-2">
                 <span class="fs-4 me-2">🧹</span>
                 <div>
-                  <h6 class="text-danger fw-bold mb-0">ระบบรีเซ็ตข้อมูลเริ่มต้นภาคเรียนใหม่ (New Term Reset)</h6>
-                  <small class="text-muted">เลือกรายการที่ต้องการล้างข้อมูลเพื่อขึ้นเทอมใหม่ (ข้อมูลนักเรียน/ครูจะยังอยู่ครบถ้วน)</small>
+                  <h6 class="text-danger fw-bold mb-0">เครื่องมือล้างประวัติถาวร (ขั้นสูง)</h6>
+                  <small class="text-muted">ไม่จำเป็นสำหรับการขึ้นปีการศึกษาใหม่ ใช้เฉพาะเมื่อมีนโยบายให้ลบประวัติจริง ๆ</small>
                 </div>
               </div>
               <hr class="my-2 text-danger">
               <div class="p-2 mb-3 bg-light rounded border">
                 <div class="form-check mb-2">
-                  <input class="form-check-input" type="checkbox" id="chkResetAttendance" checked>
+                  <input class="form-check-input" type="checkbox" id="chkResetAttendance">
                   <label class="form-check-label fw-bold text-dark" for="chkResetAttendance">
                     📋 ประวัติการเช็คชื่อเวลาเรียนรายวัน (Attendance)
                   </label>
                   <div class="small text-muted ps-4">ล้างประวัติการเช็คชื่อทั้งหมด เพื่อเริ่มนับเวลาเรียนใหม่ในเทอมใหม่</div>
                 </div>
                 <div class="form-check mb-2">
-                  <input class="form-check-input" type="checkbox" id="chkResetDeduct" checked>
+                  <input class="form-check-input" type="checkbox" id="chkResetDeduct">
                   <label class="form-check-label fw-bold text-dark" for="chkResetDeduct">
                     ⚠️ ประวัติการตัดคะแนนความประพฤติ (Deductions)
                   </label>
                   <div class="small text-muted ps-4">ล้างประวัติการหักคะแนนความประพฤติ คืนคะแนนเต็ม 100 ให้นักเรียนทุกคน</div>
                 </div>
                 <div class="form-check mb-2">
-                  <input class="form-check-input" type="checkbox" id="chkResetReward" checked>
+                  <input class="form-check-input" type="checkbox" id="chkResetReward">
                   <label class="form-check-label fw-bold text-dark" for="chkResetReward">
                     ⭐ ประวัติการบวกคะแนนความดี (Rewards)
                   </label>
@@ -1635,7 +1680,7 @@
                 </div>
               </div>
               <div class="alert alert-warning py-2 px-3 small mb-3">
-                🔒 <b>ความปลอดภัย:</b> รายชื่อนักเรียน (1,148 คน) และบัญชีผู้ใช้งานครู <b>จะไม่ถูกลบ</b> ปลอดภัย 100%
+                ⚠️ <b>คำเตือน:</b> รายการที่เลือกจะถูกลบถาวรและย้อนกลับไม่ได้ ควรใช้เมนู “ขึ้นปีการศึกษาใหม่” ด้านบนสำหรับการเปลี่ยนรายชื่อนักเรียน
               </div>
               <button class="btn btn-danger w-100 fw-bold shadow-sm py-2" onclick="confirmResetNewTerm()">
                 <i class="fas fa-trash-alt me-1"></i> ยืนยันการล้างข้อมูลเพื่อเริ่มเทอมใหม่
@@ -1792,8 +1837,10 @@
     let advisoryRoom = ""; 
     let headLevel = ""; 
     let deductCart = []; 
-    let volunteerCart = []; 
+    let volunteerCart = [];
     let allTeachersData = []; // เพิ่มตัวแปรสำหรับเก็บชื่อครู
+    let academicYearPreviewRows = [];
+    let academicYearPreviewErrors = [];
 
     function compressImageFile(file, maxDimension = 900, quality = 0.92) {
       return new Promise((resolve) => {
@@ -2527,7 +2574,8 @@
         cancelButtonText: 'ยกเลิก'
       }).then((result) => {
         if (result.isConfirmed) {
-          localStorage.removeItem('makudmuang_session'); 
+          google.script.run.logoutSession();
+          localStorage.removeItem('makudmuang_session');
           localStorage.removeItem('makudmuang_active_tab');
           document.getElementById('user').value = '';
           document.getElementById('pass').value = '';
@@ -2858,8 +2906,9 @@
       } 
       
       if(tab === 'admin') {
-        buildAdminTeacherDatalist(); 
+        buildAdminTeacherDatalist();
         loadAdminSignatures();
+        loadAcademicYearSetup();
       }
       
       if(!['admin', 'dashboard', 'volunteer', 'attendance', 'clubadmin', 'club'].includes(tab)) {
@@ -3515,6 +3564,169 @@ function loadTeachersForClub() {
       if(!no || !id || !name || !level || !room) { Swal.fire('แจ้งเตือน', 'กรุณากรอกข้อมูลให้ครบถ้วน', 'warning'); return; }
       const btn = document.getElementById('btnAdminAddStudent'); btn.innerText = 'กำลังบันทึก...'; btn.disabled = true;
       google.script.run.withSuccessHandler(res => { Swal.fire(res.success?'สำเร็จ':'ผิดพลาด', res.message, res.success?'success':'error'); btn.innerText = 'บันทึกข้อมูลนักเรียน'; btn.disabled = false; if(res.success) { document.getElementById('adminStuNo').value = ''; document.getElementById('adminStuId').value = ''; document.getElementById('adminStuName').value = ''; } }).adminAddStudent(no, id, name, level, room);
+    }
+
+    function academicEscape(value) {
+      return String(value ?? '').replace(/[&<>'"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch]));
+    }
+
+    function loadAcademicYearSetup() {
+      google.script.run
+        .withSuccessHandler(res => {
+          document.getElementById('academicYearStatus').className = 'badge bg-primary';
+          document.getElementById('academicYearStatus').textContent = `ปีปัจจุบัน ${res.currentYear} · ใช้งาน ${res.activeCount} คน`;
+          const yearInput = document.getElementById('academicTargetYear');
+          if (!yearInput.value) yearInput.value = String(Number(res.currentYear) + 1);
+          loadAcademicYearBackups();
+        })
+        .withFailureHandler(err => {
+          document.getElementById('academicYearStatus').className = 'badge bg-danger';
+          document.getElementById('academicYearStatus').textContent = err.message || 'โหลดข้อมูลไม่สำเร็จ';
+        })
+        .getAcademicYearSetupData();
+    }
+
+    function downloadAcademicYearTemplate() {
+      if (!window.XLSX) return Swal.fire('ไม่พร้อมใช้งาน', 'ไม่พบตัวอ่านไฟล์ Excel กรุณารีเฟรชหน้าเว็บ', 'error');
+      const rows = [
+        ['เลขที่', 'รหัสนักเรียน', 'ชื่อ-นามสกุล', 'ชั้น', 'ห้อง'],
+        ['1', '74001', 'นายตัวอย่าง นักเรียน', 'ม.1', '1'],
+        ['2', '74002', 'นางสาวตัวอย่าง นักเรียน', 'ม.1', '1']
+      ];
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+      ws['!cols'] = [{wch:10},{wch:18},{wch:34},{wch:12},{wch:10}];
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'รายชื่อนักเรียน');
+      XLSX.writeFile(wb, 'แบบฟอร์มรายชื่อนักเรียนปีการศึกษาใหม่.xlsx');
+    }
+
+    function academicHeaderKey(value) {
+      const key = String(value ?? '').trim().toLowerCase().replace(/[\s._\-\/()]+/g, '');
+      const aliases = {
+        'เลขที่':'no', 'ลำดับ':'no', 'ลําดับ':'no', 'no':'no', 'number':'no',
+        'รหัสนักเรียน':'studentId', 'รหัสประจำตัว':'studentId', 'รหัสประจําตัว':'studentId', 'studentid':'studentId', 'id':'studentId',
+        'ชื่อนามสกุล':'name', 'ชื่อสกุล':'name', 'ชื่อ':'name', 'name':'name', 'fullname':'name',
+        'ชั้น':'level', 'ระดับชั้น':'level', 'level':'level', 'class':'level',
+        'ห้อง':'room', 'ห้องเรียน':'room', 'room':'room'
+      };
+      return aliases[key] || null;
+    }
+
+    function validateAcademicClientRow(values, rowNumber, seen) {
+      const row = {
+        no: String(values.no ?? '').trim(), studentId: String(values.studentId ?? '').trim(),
+        name: String(values.name ?? '').trim(), level: String(values.level ?? '').trim(), room: String(values.room ?? '').trim()
+      };
+      row.level = row.level.replace(/^ม\.?\s*([1-6])$/u, 'ม.$1');
+      const errors = [];
+      if (!/^[0-9]{1,3}$/.test(row.no) || Number(row.no) < 1) errors.push('เลขที่ไม่ถูกต้อง');
+      if (!/^[0-9A-Za-z_-]{3,30}$/.test(row.studentId)) errors.push('รหัสนักเรียนไม่ถูกต้อง');
+      if (!row.name || row.name.length > 255 || /[<>{}\x00-\x1F]/.test(row.name)) errors.push('ชื่อไม่ถูกต้อง');
+      if (!/^ม\.[1-6]$/.test(row.level)) errors.push('ชั้นต้องเป็น ม.1-ม.6');
+      if (!/^(?:[1-9]|1[0-2])$/.test(row.room)) errors.push('ห้องต้องเป็น 1-12');
+      if (row.studentId && seen.has(row.studentId)) errors.push('รหัสซ้ำในไฟล์');
+      if (row.studentId) seen.add(row.studentId);
+      return {...row, rowNumber, errors};
+    }
+
+    async function previewAcademicYearFile() {
+      const file = document.getElementById('academicRosterFile').files[0];
+      if (!file) return Swal.fire('ยังไม่ได้เลือกไฟล์', 'กรุณาเลือกไฟล์ Excel หรือ CSV', 'warning');
+      if (!window.XLSX) return Swal.fire('ไม่พร้อมใช้งาน', 'ไม่พบตัวอ่านไฟล์ Excel กรุณารีเฟรชหน้าเว็บ', 'error');
+      try {
+        const buffer = await file.arrayBuffer();
+        const workbook = XLSX.read(buffer, {type:'array', cellDates:false});
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const data = XLSX.utils.sheet_to_json(sheet, {header:1, raw:false, defval:''});
+        const headerIndex = data.findIndex(row => row.some(cell => String(cell).trim() !== ''));
+        if (headerIndex < 0) throw new Error('ไฟล์ไม่มีข้อมูล');
+        const mappedHeaders = data[headerIndex].map(academicHeaderKey);
+        const required = ['no','studentId','name','level','room'];
+        const missing = required.filter(key => !mappedHeaders.includes(key));
+        if (missing.length) throw new Error('หัวตารางไม่ครบ ต้องมี: เลขที่, รหัสนักเรียน, ชื่อ-นามสกุล, ชั้น, ห้อง');
+
+        const seen = new Set();
+        const parsed = [];
+        for (let i = headerIndex + 1; i < data.length; i++) {
+          if (!data[i].some(cell => String(cell).trim() !== '')) continue;
+          const values = {};
+          mappedHeaders.forEach((key, column) => { if (key) values[key] = data[i][column]; });
+          parsed.push(validateAcademicClientRow(values, i + 1, seen));
+        }
+        if (!parsed.length) throw new Error('ไม่พบรายชื่อนักเรียนใต้หัวตาราง');
+        academicYearPreviewRows = parsed.filter(row => row.errors.length === 0).map(({errors, rowNumber, ...row}) => row);
+        academicYearPreviewErrors = parsed.filter(row => row.errors.length > 0);
+        renderAcademicYearPreview(parsed);
+      } catch (err) {
+        academicYearPreviewRows = [];
+        academicYearPreviewErrors = [];
+        document.getElementById('academicApplyButton').disabled = true;
+        Swal.fire('อ่านไฟล์ไม่สำเร็จ', err.message || 'รูปแบบไฟล์ไม่ถูกต้อง', 'error');
+      }
+    }
+
+    function renderAcademicYearPreview(rows) {
+      const errorCount = rows.filter(row => row.errors.length).length;
+      const summary = document.getElementById('academicPreviewSummary');
+      summary.className = `alert ${errorCount ? 'alert-danger' : 'alert-success'} py-2 mb-2`;
+      summary.textContent = errorCount
+        ? `พบ ${rows.length} รายการ · ถูกต้อง ${rows.length-errorCount} · ต้องแก้ไข ${errorCount} รายการ (ยังบันทึกไม่ได้)`
+        : `ผ่านการตรวจสอบ ${rows.length} รายการ พร้อมสำรองและบันทึก`;
+      const tbody = document.querySelector('#academicPreviewTable tbody');
+      tbody.innerHTML = rows.slice(0, 150).map(row => `<tr class="${row.errors.length ? 'table-danger' : ''}">
+        <td>${row.rowNumber}</td><td>${academicEscape(row.no)}</td><td>${academicEscape(row.studentId)}</td>
+        <td>${academicEscape(row.name)}</td><td>${academicEscape(row.level)}</td><td>${academicEscape(row.room)}</td>
+        <td>${row.errors.length ? academicEscape(row.errors.join(', ')) : '<span class="text-success">ผ่าน</span>'}</td></tr>`).join('');
+      if (rows.length > 150) tbody.innerHTML += `<tr><td colspan="7" class="text-center text-muted">แสดง 150 รายการแรกจาก ${rows.length} รายการ</td></tr>`;
+      document.getElementById('academicApplyButton').disabled = errorCount > 0;
+    }
+
+    function applyAcademicYearRoster() {
+      const year = document.getElementById('academicTargetYear').value.trim();
+      if (!/^\d{4}$/.test(year)) return Swal.fire('ปีการศึกษาไม่ถูกต้อง', 'กรุณากรอกตัวเลข 4 หลัก เช่น 2569', 'warning');
+      if (!academicYearPreviewRows.length || academicYearPreviewErrors.length) return Swal.fire('ยังบันทึกไม่ได้', 'กรุณาตรวจไฟล์และแก้ข้อผิดพลาดให้ครบก่อน', 'warning');
+      const resetClubs = document.getElementById('academicResetClubMembers').checked;
+      Swal.fire({
+        title: `ยืนยันขึ้นปีการศึกษา ${year}?`,
+        html: `<div class="text-start">• สำรองรายชื่อเดิมอัตโนมัติ<br>• นำเข้า ${academicYearPreviewRows.length} คน<br>• ไม่ลบประวัติการเช็กชื่อ คะแนน และจิตอาสา${resetClubs ? '<br>• ล้างสมาชิกชุมนุมปัจจุบัน' : ''}</div><div class="mt-3">พิมพ์ <b>${year}</b> เพื่อยืนยัน</div>`,
+        input: 'text', icon: 'warning', showCancelButton: true, confirmButtonText: 'สำรองและดำเนินการ', cancelButtonText: 'ยกเลิก',
+        preConfirm: value => value === year || Swal.showValidationMessage('ปีการศึกษาที่พิมพ์ไม่ตรงกัน')
+      }).then(result => {
+        if (!result.isConfirmed) return;
+        const button = document.getElementById('academicApplyButton');
+        button.disabled = true; button.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> กำลังสำรองและบันทึก...';
+        const options = {deactivateMissing: document.getElementById('academicDeactivateMissing').checked, resetClubMembers: resetClubs};
+        google.script.run
+          .withSuccessHandler(res => {
+            button.innerHTML = '<i class="fas fa-database me-1"></i> สำรองข้อมูลและเปลี่ยนปีการศึกษา';
+            academicYearPreviewRows = []; academicYearPreviewErrors = [];
+            document.getElementById('academicRosterFile').value = '';
+            document.querySelector('#academicPreviewTable tbody').innerHTML = '<tr><td colspan="7" class="text-center text-muted">ดำเนินการแล้ว กรุณาเลือกไฟล์ใหม่หากต้องการทำอีกครั้ง</td></tr>';
+            document.getElementById('academicPreviewSummary').textContent = `สำเร็จ: นำเข้า ${res.importedCount} คน`;
+            Swal.fire('สำเร็จ', `${res.message} นำเข้า ${res.importedCount} คน`, 'success');
+            loadAcademicYearSetup();
+          })
+          .withFailureHandler(err => { button.disabled = false; button.innerHTML = '<i class="fas fa-database me-1"></i> สำรองข้อมูลและเปลี่ยนปีการศึกษา'; Swal.fire('ดำเนินการไม่สำเร็จ', err.message || 'เกิดข้อผิดพลาด', 'error'); })
+          .applyAcademicYearImport(academicYearPreviewRows, year, options);
+      });
+    }
+
+    function loadAcademicYearBackups() {
+      google.script.run.withSuccessHandler(res => {
+        const box = document.getElementById('academicBackups');
+        if (!res.backups || !res.backups.length) { box.textContent = 'ยังไม่มีชุดสำรอง'; return; }
+        box.innerHTML = res.backups.map(item => `<div class="border rounded p-2 mb-2 d-flex justify-content-between align-items-center gap-2 flex-wrap">
+          <span><b>${academicEscape(item.fromYear)}</b> → ${academicEscape(item.toYear)} · สำรอง ${Number(item.backupCount)} คน · ${academicEscape(item.createdAt)}</span>
+          <button class="btn btn-sm btn-outline-danger" onclick="restoreAcademicYearBackup('${academicEscape(item.batchId)}','${academicEscape(item.fromYear)}')">ย้อนกลับชุดนี้</button></div>`).join('');
+      }).withFailureHandler(err => { document.getElementById('academicBackups').textContent = err.message || 'โหลดชุดสำรองไม่สำเร็จ'; }).listAcademicYearBackups();
+    }
+
+    function restoreAcademicYearBackup(batchId, year) {
+      Swal.fire({title:`กู้คืนรายชื่อปี ${year}?`, text:'ระบบจะสำรองสถานะปัจจุบันอีกครั้งก่อนย้อนกลับ และจะไม่ลบประวัติกิจกรรม', icon:'warning', showCancelButton:true, confirmButtonText:'กู้คืน', cancelButtonText:'ยกเลิก', confirmButtonColor:'#dc3545'})
+        .then(result => { if (!result.isConfirmed) return; Swal.fire({title:'กำลังกู้คืน...', allowOutsideClick:false, didOpen:()=>Swal.showLoading()});
+          google.script.run.withSuccessHandler(res => { Swal.fire('สำเร็จ', res.message, 'success'); loadAcademicYearSetup(); })
+            .withFailureHandler(err => Swal.fire('กู้คืนไม่สำเร็จ', err.message || 'เกิดข้อผิดพลาด', 'error')).restoreAcademicYearBackup(batchId);
+        });
     }
 
     function checkAndLoadAtt() {
