@@ -156,9 +156,6 @@ function routeAction($action, $args, $pdo) {
         case 'adminUpdateStudentRecord':
             return adminUpdateStudentRecord($args[0], $args[1], $pdo);
 
-        case 'adminBulkMoveStudents':
-            return adminBulkMoveStudents($args[0] ?? [], $pdo);
-
         case 'adminSetStudentActive':
             return adminSetStudentActive($args[0], $args[1], $args[2] ?? '', $pdo);
 
@@ -1495,16 +1492,6 @@ function requireAdminSession() {
     return trim($_SESSION['teacher_name'] ?? $_SESSION['username']);
 }
 
-function requireActivityAdminSession() {
-    if (empty($_SESSION['username']) || empty($_SESSION['teacher_name'])) {
-        throw new RuntimeException('เซสชันหมดอายุ กรุณาออกจากระบบแล้วเข้าสู่ระบบใหม่');
-    }
-    if (empty($_SESSION['is_admin']) && empty($_SESSION['is_activity_admin'])) {
-        throw new RuntimeException('คุณไม่มีสิทธิ์ผู้ดูแลระบบกิจกรรม');
-    }
-    return trim($_SESSION['teacher_name'] ?? $_SESSION['username']);
-}
-
 function validateStudentMasterData($data) {
     if (!is_array($data)) throw new InvalidArgumentException('รูปแบบข้อมูลนักเรียนไม่ถูกต้อง');
     $no = trim((string)($data['no'] ?? ''));
@@ -1548,7 +1535,7 @@ function getAdminStudentsByRoom($level, $room, $status, $pdo) {
         throw new InvalidArgumentException('กรุณาเลือกชั้นและห้องให้ถูกต้อง');
     }
     $status = in_array($status, ['active', 'inactive', 'all'], true) ? $status : 'active';
-    $sql = "SELECT no, student_id, name, level, room, avatar, is_active, academic_year FROM students WHERE level = ? AND room = ?";
+    $sql = "SELECT no, student_id, name, level, room, is_active, academic_year FROM students WHERE level = ? AND room = ?";
     if ($status === 'active') $sql .= " AND is_active = 1";
     if ($status === 'inactive') $sql .= " AND is_active = 0";
     $sql .= " ORDER BY is_active DESC, CAST(no AS UNSIGNED), name";
@@ -1583,62 +1570,6 @@ function adminUpdateStudentRecord($studentId, $data, $pdo) {
         writeStudentRosterChange($pdo, $studentId, 'update', $old, $new, '', $adminName);
         $pdo->commit();
         return ['success' => true, 'message' => 'แก้ไขข้อมูลนักเรียนเรียบร้อยแล้ว', 'student' => $new];
-    } catch (Exception $e) {
-        if ($pdo->inTransaction()) $pdo->rollBack();
-        throw $e;
-    }
-}
-
-/**
- * เปลี่ยนชั้น/ห้องนักเรียนหลายคนในภาคเรียนเดิม โดยไม่เปลี่ยนปีการศึกษา
- * และไม่แตะต้องข้อมูลประวัติการเช็กชื่อ คะแนน หรือกิจกรรม
- */
-function adminBulkMoveStudents($rows, $pdo) {
-    $adminName = requireAdminSession();
-    ensureAcademicYearSchema($pdo);
-    if (!is_array($rows) || count($rows) < 1) throw new InvalidArgumentException('ไม่พบรายการสำหรับย้ายห้อง');
-    if (count($rows) > 2000) throw new InvalidArgumentException('นำเข้าได้ไม่เกิน 2,000 รายการต่อครั้ง');
-
-    $normalized = [];
-    $seen = [];
-    foreach ($rows as $index => $row) {
-        if (!is_array($row)) throw new InvalidArgumentException('รูปแบบรายการแถวที่ ' . ($index + 1) . ' ไม่ถูกต้อง');
-        $studentId = validateStudentIdValue($row['studentId'] ?? ($row['student_id'] ?? ''));
-        $level = trim((string)($row['level'] ?? ''));
-        $room = trim((string)($row['room'] ?? ''));
-        if (!preg_match('/^ม\.[1-6]$/u', $level)) throw new InvalidArgumentException('ชั้นของแถวที่ ' . ($index + 1) . ' ต้องเป็น ม.1 ถึง ม.6');
-        if (!preg_match('/^[1-6]$/', $room)) throw new InvalidArgumentException('ห้องของแถวที่ ' . ($index + 1) . ' ต้องเป็น 1 ถึง 6');
-        if (isset($seen[$studentId])) throw new InvalidArgumentException('รหัสนักเรียนซ้ำในไฟล์: ' . $studentId);
-        $seen[$studentId] = true;
-        $normalized[] = ['studentId' => $studentId, 'level' => $level, 'room' => $room];
-    }
-
-    try {
-        $pdo->beginTransaction();
-        $find = $pdo->prepare("SELECT no, student_id, name, level, room, is_active, academic_year FROM students WHERE student_id = ? FOR UPDATE");
-        $checkTarget = $pdo->prepare("SELECT COUNT(*) FROM students WHERE is_active = 1 AND level = ? AND room = ? AND no = ? AND student_id <> ?");
-        $update = $pdo->prepare("UPDATE students SET level = ?, room = ? WHERE student_id = ?");
-        $clubUpdate = $pdo->prepare("UPDATE club_members SET level = ?, room = ? WHERE student_id = ?");
-        $changed = 0; $unchanged = 0; $missing = [];
-        foreach ($normalized as $item) {
-            $find->execute([$item['studentId']]);
-            $old = $find->fetch();
-            if (!$old) { $missing[] = $item['studentId']; continue; }
-            if ((string)$old['level'] === $item['level'] && (string)$old['room'] === $item['room']) { $unchanged++; continue; }
-            if ((int)$old['is_active'] === 1) {
-                $checkTarget->execute([$item['level'], $item['room'], $old['no'], $item['studentId']]);
-                if ((int)$checkTarget->fetchColumn() > 0) {
-                    throw new RuntimeException('เลขที่ ' . $old['no'] . ' มีนักเรียนใช้งานอยู่แล้วใน ' . $item['level'] . '/' . $item['room'] . ' (' . $item['studentId'] . ')');
-                }
-            }
-            $update->execute([$item['level'], $item['room'], $item['studentId']]);
-            $clubUpdate->execute([$item['level'], $item['room'], $item['studentId']]);
-            $new = array_merge($old, ['level' => $item['level'], 'room' => $item['room']]);
-            writeStudentRosterChange($pdo, $item['studentId'], 'bulk_room_move', $old, $new, 'ปรับห้องจำนวนมากโดยไม่เปลี่ยนปีการศึกษา', $adminName);
-            $changed++;
-        }
-        $pdo->commit();
-        return ['success' => true, 'changedCount' => $changed, 'unchangedCount' => $unchanged, 'missingStudentIds' => $missing, 'message' => 'ปรับชั้น/ห้องเรียบร้อยแล้ว โดยไม่เปลี่ยนปีการศึกษาและไม่ลบประวัติเดิม'];
     } catch (Exception $e) {
         if ($pdo->inTransaction()) $pdo->rollBack();
         throw $e;

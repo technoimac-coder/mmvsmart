@@ -1631,81 +1631,11 @@
               <div id="rosterManageSummary" class="alert alert-light border py-2 mb-2">เลือกชั้นและห้องเพื่อดูรายชื่อ</div>
               <div class="table-responsive" style="max-height:460px;">
                 <table class="table table-sm table-bordered table-hover align-middle mb-0" id="rosterManageTable">
-                  <thead class="table-primary position-sticky top-0"><tr><th class="text-center">เลขที่</th><th class="text-center">รูป</th><th>รหัส</th><th>ชื่อ-นามสกุล</th><th class="text-center">ห้อง</th><th class="text-center">สถานะ</th><th class="text-center">จัดการ</th></tr></thead>
-                  <tbody><tr><td colspan="7" class="text-center text-muted py-3">ยังไม่ได้โหลดรายชื่อ</td></tr></tbody>
+                  <thead class="table-primary position-sticky top-0"><tr><th class="text-center">เลขที่</th><th>รหัส</th><th>ชื่อ-นามสกุล</th><th class="text-center">ห้อง</th><th class="text-center">สถานะ</th><th class="text-center">จัดการ</th></tr></thead>
+                  <tbody><tr><td colspan="6" class="text-center text-muted py-3">ยังไม่ได้โหลดรายชื่อ</td></tr></tbody>
                 </table>
               </div>
               <div id="rosterChangeHistory" class="mt-3 d-none"></div>
-            </div>
-
-            <!-- ปรับห้องนักเรียนจำนวนมากในปีการศึกษาเดิม -->
-            <div class="card p-3 shadow-sm mb-4" style="border-left:5px solid #0891b2 !important;border-radius:16px;">
-              <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
-                <div>
-                  <h6 class="fw-bold mb-1" style="color:#0e7490;"><i class="fas fa-arrows-turn-to-dots me-1"></i> ปรับห้องนักเรียนจำนวนมาก</h6>
-                  <small class="text-muted">ใช้เมื่อย้ายห้องระหว่างภาคเรียนเดิม ไม่เปลี่ยนปีการศึกษา ไม่ลบประวัติ และแก้เฉพาะชั้น/ห้องตามรหัสนักเรียน</small>
-                </div>
-                <button type="button" class="btn btn-sm btn-outline-info" onclick="downloadBulkRoomMoveTemplate()"><i class="fas fa-download me-1"></i>ไฟล์ตัวอย่าง</button>
-              </div>
-              <div class="row g-2 align-items-end mb-3">
-                <div class="col-12 col-md-7"><label class="form-label small fw-bold">ไฟล์ Excel/CSV (รหัสนักเรียน, ชั้น, ห้อง)</label><input id="bulkRoomMoveFile" type="file" class="form-control" accept=".xlsx,.xls,.csv"></div>
-                <div class="col-6 col-md-2"><button type="button" class="btn btn-outline-primary w-100" onclick="previewBulkRoomMoveFile()"><i class="fas fa-search me-1"></i>ตรวจไฟล์</button></div>
-                <div class="col-6 col-md-3"><button type="button" id="bulkRoomMoveApplyButton" class="btn text-white fw-bold w-100" style="background:#0891b2;" onclick="applyBulkRoomMove()" disabled><i class="fas fa-save me-1"></i>บันทึกการย้ายห้อง</button></div>
-              </div>
-              <div id="bulkRoomMoveSummary" class="alert alert-light border py-2 mb-2">ยังไม่ได้เลือกไฟล์</div>
-              <div class="table-responsive" style="max-height:260px;"><table class="table table-sm table-bordered align-middle mb-0" id="bulkRoomMovePreviewTable"><thead class="table-info"><tr><th>แถว</th><th>รหัสนักเรียน</th><th>ชั้นใหม่</th><th>ห้องใหม่</th><th>ผลตรวจ</th></tr></thead><tbody><tr><td colspan="5" class="text-center text-muted">กด “ตรวจไฟล์” เพื่อดูรายการ</td></tr></tbody></table></div>
-            </div>
-
-            <!-- จัดการกิจกรรมและเปิดให้ครูเช็กชื่อ -->
-            <div class="card p-3 shadow-sm mb-4" id="adminActivityManagementCard" style="border-left:5px solid #7c3aed !important;border-radius:16px;">
-              <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
-                <div>
-                  <h6 class="fw-bold mb-1" style="color:#6d28d9;"><i class="fas fa-clipboard-check me-1"></i> จัดการกิจกรรม</h6>
-                  <small class="text-muted">สร้างกิจกรรมสำหรับทั้งโรงเรียน ระดับชั้น หรือห้องเดียว และเปิด–ปิดการเช็กชื่อโดยไม่ลบประวัติ</small>
-                </div>
-                <button class="btn btn-sm btn-outline-secondary" onclick="loadAdminActivities()"><i class="fas fa-sync-alt me-1"></i>รีเฟรช</button>
-              </div>
-              <div class="border rounded-3 p-3 mb-3" style="background:#faf8ff;border-color:#c4b5fd !important;">
-                <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-2">
-                  <div><b style="color:#6d28d9;"><i class="fas fa-layer-group me-1"></i>เพิ่มกิจกรรมหลายรายการพร้อมกัน</b><br><small class="text-muted">กรอกกิจกรรมทั้งเทอมได้สูงสุด 100 รายการ ทุกกิจกรรมใช้กับทุกระดับและทุกห้อง</small></div>
-                  <button type="button" class="btn btn-sm btn-outline-primary" onclick="addAdminActivityBulkRow()"><i class="fas fa-plus me-1"></i>เพิ่มแถว</button>
-                </div>
-                <div class="row g-2 mb-3">
-                  <div class="col-6 col-md-3"><label class="form-label small fw-bold">ปีการศึกษา</label><input id="adminActivityAcademicYear" class="form-control" inputmode="numeric" maxlength="4" placeholder="2569" onchange="loadAdminActivities()"></div>
-                  <div class="col-6 col-md-3"><label class="form-label small fw-bold">ภาคเรียน</label><select id="adminActivitySemester" class="form-select" onchange="loadAdminActivities()"><option value="1">ภาคเรียนที่ 1</option><option value="2">ภาคเรียนที่ 2</option></select></div>
-                </div>
-                <div class="row g-2 d-none d-md-flex px-2 mb-1 small fw-bold text-muted"><div class="col-md-7">ชื่อกิจกรรม</div><div class="col-md-4">วัน/เดือน/ปี</div><div class="col-md-1"></div></div>
-                <div id="adminActivityBulkRows"></div>
-                <div class="d-flex flex-wrap gap-2 mt-3">
-                  <button type="button" class="btn btn-outline-secondary" onclick="resetAdminActivityBulkRows()"><i class="fas fa-rotate-left me-1"></i>ล้างรายการ</button>
-                  <button type="button" id="btnAdminSaveActivitiesBulk" class="btn text-white fw-bold flex-grow-1" style="background:#6d28d9;" onclick="saveAdminActivitiesBulk()"><i class="fas fa-save me-1"></i>บันทึกกิจกรรมทั้งหมด</button>
-                </div>
-              </div>
-              <div class="table-responsive" style="max-height:360px;">
-                <table class="table table-sm table-bordered table-hover align-middle mb-0" id="adminActivityTable">
-                  <thead class="position-sticky top-0" style="background:#ede9fe;"><tr><th>วันที่/เวลา</th><th>กิจกรรม</th><th>กลุ่มเป้าหมาย</th><th class="text-center">เช็กแล้ว</th><th class="text-center">สถานะ</th><th class="text-center">จัดการ</th></tr></thead>
-                  <tbody><tr><td colspan="6" class="text-center text-muted py-3">กำลังโหลดกิจกรรม...</td></tr></tbody>
-                </table>
-              </div>
-              <hr class="my-4">
-              <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
-                <div><b style="color:#6d28d9;"><i class="fas fa-chart-column me-1"></i>รายงานกิจกรรมรายห้อง</b><br><small class="text-muted">คำนวณจากกิจกรรมทั้งหมด เกณฑ์ผ่านต้องเข้าร่วมอย่างน้อย 80%</small></div>
-              </div>
-              <div class="row g-2 align-items-end mb-3">
-                <div class="col-6 col-md-2"><label class="form-label small fw-bold">ปีการศึกษา</label><input id="adminActivityReportYear" class="form-control" inputmode="numeric" maxlength="4" placeholder="2569"></div>
-                <div class="col-6 col-md-2"><label class="form-label small fw-bold">ภาคเรียน</label><select id="adminActivityReportSemester" class="form-select"><option value="1">1</option><option value="2">2</option></select></div>
-                <div class="col-5 col-md-2"><label class="form-label small fw-bold">ชั้น</label><select id="adminActivityReportLevel" class="form-select"><option value="">เลือกชั้น</option><option value="ม.1">ม.1</option><option value="ม.2">ม.2</option><option value="ม.3">ม.3</option><option value="ม.4">ม.4</option><option value="ม.5">ม.5</option><option value="ม.6">ม.6</option></select></div>
-                <div class="col-4 col-md-2"><label class="form-label small fw-bold">ห้อง</label><select id="adminActivityReportRoom" class="form-select"><option value="">เลือกห้อง</option><option value="all">ทุกห้องในระดับ</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option></select></div>
-                <div class="col-3 col-md-2"><button id="btnLoadAdminActivityReport" type="button" class="btn btn-primary w-100 fw-bold" onclick="loadAdminActivityReport()"><i class="fas fa-search me-1"></i>ดูรายงาน</button></div>
-              </div>
-              <div id="adminActivityReportSummary" class="alert alert-light border py-2 mb-2">เลือกชั้นและห้องเพื่อดูรายงาน</div>
-              <div id="adminActivityReportList" class="mb-3"></div>
-              <div class="table-responsive" style="max-height:420px;">
-                <table class="table table-sm table-bordered table-hover align-middle mb-0" id="adminActivityReportTable">
-                  <thead class="table-light position-sticky top-0"><tr><th class="text-center">เลขที่</th><th>รหัส</th><th>ชื่อ-นามสกุล</th><th class="text-center">เข้าร่วม</th><th class="text-center">ลา</th><th class="text-center">ไม่เข้าร่วม</th><th class="text-center">ยังไม่เช็ก</th><th class="text-center">ร้อยละ</th><th class="text-center">ผล</th></tr></thead>
-                  <tbody><tr><td colspan="9" class="text-center text-muted py-3">ยังไม่ได้โหลดรายงาน</td></tr></tbody>
-                </table>
-              </div>
             </div>
 
             <!-- จัดการรายชื่อนักเรียนเมื่อขึ้นปีการศึกษาใหม่ -->
@@ -2063,50 +1993,6 @@
     let allTeachersData = []; // เพิ่มตัวแปรสำหรับเก็บชื่อครู
     let academicYearPreviewRows = [];
     let academicYearPreviewErrors = [];
-    let bulkRoomMovePreviewRows = [];
-    let bulkRoomMovePreviewErrors = [];
-    let teacherActivities = [];
-    let activityStudents = [];
-    let activityMatrixData = null;
-
-    function refreshDateAfterMidnight() {
-      const newDate = getLocalDateValue();
-      if (newDate === currentAutoDate) return;
-
-      const previousDate = currentAutoDate;
-      currentAutoDate = newDate;
-      const dateInput = document.getElementById('dateInput');
-      const clubDateInput = document.getElementById('clubAttendanceDate');
-      const attendanceUsesAutoDate = !dateInput.value || dateInput.value === previousDate;
-      const clubUsesAutoDate = !clubDateInput.value || clubDateInput.value === previousDate;
-
-      if (attendanceUsesAutoDate) dateInput.value = newDate;
-      if (clubUsesAutoDate) clubDateInput.value = newDate;
-      ['indvStartDate', 'indvEndDate'].forEach(id => {
-        const input = document.getElementById(id);
-        if (!input.value || input.value === previousDate) input.value = newDate;
-      });
-      applyAcademicPeriodDateLimits(getGlobalAcademicPeriod());
-
-      const currentTime = new Date();
-      document.getElementById('timeInput').value =
-        `${String(currentTime.getHours()).padStart(2, '0')}:${String(currentTime.getMinutes()).padStart(2, '0')}`;
-
-      if (attendanceUsesAutoDate && document.getElementById('attendanceSection').style.display !== 'none') {
-        checkAndLoadAtt();
-      }
-      if (clubUsesAutoDate && document.getElementById('clubSection').style.display !== 'none') {
-        const clubName = document.getElementById('clubAttendanceSelect').value;
-        if (clubName) loadAttendanceTable(clubName);
-      }
-    }
-
-    // ตรวจทุกนาที และตรวจทันทีเมื่อกลับมาเปิดแท็บหลังเครื่องพักหน้าจอ
-    setInterval(refreshDateAfterMidnight, 60000);
-    document.addEventListener('visibilitychange', () => {
-      if (!document.hidden) refreshDateAfterMidnight();
-    });
-    window.addEventListener('focus', refreshDateAfterMidnight);
     let managedRosterStudents = [];
 
     function compressImageFile(file, maxDimension = 900, quality = 0.92) {
@@ -4101,7 +3987,7 @@ function loadTeachersForClub() {
       const status = document.getElementById('rosterManageStatus').value;
       if (!level || !room) return Swal.fire('กรุณาเลือกห้อง', 'เลือกชั้นและห้องก่อนโหลดรายชื่อ', 'warning');
       const tbody = document.querySelector('#rosterManageTable tbody');
-      tbody.innerHTML = '<tr><td colspan="7" class="text-center py-3"><span class="spinner-border spinner-border-sm me-2"></span>กำลังโหลด...</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="6" class="text-center py-3"><span class="spinner-border spinner-border-sm me-2"></span>กำลังโหลด...</td></tr>';
       google.script.run
         .withSuccessHandler(res => {
           managedRosterStudents = res.students || [];
@@ -4109,7 +3995,7 @@ function loadTeachersForClub() {
         })
         .withFailureHandler(err => {
           managedRosterStudents = [];
-          tbody.innerHTML = `<tr><td colspan="7" class="text-center text-danger py-3">${academicEscape(err.message || 'โหลดรายชื่อไม่สำเร็จ')}</td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="6" class="text-center text-danger py-3">${academicEscape(err.message || 'โหลดรายชื่อไม่สำเร็จ')}</td></tr>`;
         })
         .getAdminStudentsByRoom(level, room, status);
     }
@@ -4123,22 +4009,13 @@ function loadTeachersForClub() {
       summary.textContent = `พบ ${managedRosterStudents.length} คน · ใช้งาน ${activeCount} คน · ไม่ใช้งาน ${managedRosterStudents.length-activeCount} คน${query ? ` · แสดงผลค้นหา ${rows.length} คน` : ''}`;
       const tbody = document.querySelector('#rosterManageTable tbody');
       if (!rows.length) {
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-3">ไม่พบรายชื่อตามเงื่อนไข</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-3">ไม่พบรายชื่อตามเงื่อนไข</td></tr>';
         return;
       }
       tbody.innerHTML = rows.map(student => {
         const active = Number(student.is_active) === 1;
-        const avatarUrl = safeRosterAvatarUrl(student.avatar);
-        const fallbackAvatar = (String(student.name).includes('หญิง') || String(student.name).includes('นางสาว')) ? '👧' : '👦';
-        const avatarHtml = avatarUrl
-          ? `<div class="d-inline-flex align-items-center justify-content-center rounded-3 overflow-hidden border bg-light" style="width:44px;height:54px;">
-               <img data-roster-avatar src="${academicEscape(avatarUrl)}" alt="รูป ${academicEscape(student.name)}" loading="lazy" style="width:100%;height:100%;object-fit:cover;">
-               <span class="d-none fs-4" aria-hidden="true">${fallbackAvatar}</span>
-             </div>`
-          : `<div class="d-inline-flex align-items-center justify-content-center rounded-3 border bg-light fs-4" style="width:44px;height:54px;" aria-label="ยังไม่มีรูปนักเรียน">${fallbackAvatar}</div>`;
         return `<tr class="${active ? '' : 'table-secondary'}">
           <td class="text-center fw-bold">${academicEscape(student.no)}</td>
-          <td class="text-center">${avatarHtml}</td>
           <td>${academicEscape(student.student_id)}</td>
           <td>${academicEscape(student.name)}</td>
           <td class="text-center">${academicEscape(student.level)}/${academicEscape(student.room)}</td>
@@ -4149,21 +4026,6 @@ function loadTeachersForClub() {
           </td>
         </tr>`;
       }).join('');
-      tbody.querySelectorAll('img[data-roster-avatar]').forEach(img => img.addEventListener('error', () => {
-        img.classList.add('d-none');
-        img.nextElementSibling?.classList.remove('d-none');
-      }, {once:true}));
-    }
-
-    function safeRosterAvatarUrl(value) {
-      const raw = String(value ?? '').trim();
-      if (!raw) return '';
-      try {
-        const url = new URL(raw, window.location.href);
-        return url.origin === window.location.origin && /^https?:$/.test(url.protocol) ? url.href : '';
-      } catch (_) {
-        return '';
-      }
     }
 
     function rosterRoomOptions(selected) {
