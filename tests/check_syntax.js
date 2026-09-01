@@ -52,6 +52,12 @@ if (roster[1][1] !== '74001') throw new Error('SheetJS roster round-trip failed'
 ['rosterManageTable', 'loadManagedRoster', 'toggleManagedStudent'].forEach(required => {
   if (!html.includes(required)) throw new Error(`Missing roster UI: ${required}`);
 });
+if (!apiSource.includes('name, level, room, avatar, is_active')) {
+  throw new Error('Roster API must return the student avatar');
+}
+['safeRosterAvatarUrl', 'data-roster-avatar', 'loading="lazy"'].forEach(required => {
+  if (!html.includes(required)) throw new Error(`Missing roster avatar support: ${required}`);
+});
 if (!apiSource.includes("preg_match('/^[1-6]$/', $room)")) {
   throw new Error('Server-side room validation must allow rooms 1-6 only');
 }
