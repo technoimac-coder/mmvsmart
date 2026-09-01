@@ -1489,6 +1489,50 @@
               </div>
             </div>
 
+            <!-- จัดการรายชื่อนักเรียนรายห้อง -->
+            <div class="card p-3 shadow-sm mb-4" style="border-left:5px solid #0d6efd !important;border-radius:16px;">
+              <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+                <div>
+                  <h6 class="fw-bold text-primary mb-1"><i class="fas fa-users-gear me-1"></i> จัดการรายชื่อนักเรียนรายห้อง</h6>
+                  <small class="text-muted">แก้ไขเลขที่ ชื่อ หรือย้ายห้อง และปิดใช้งานนักเรียนที่ลาออกกลางคันโดยไม่ลบประวัติเดิม</small>
+                </div>
+                <button class="btn btn-sm btn-outline-secondary" onclick="loadRecentRosterChanges()"><i class="fas fa-clock-rotate-left me-1"></i>ประวัติการแก้ไข</button>
+              </div>
+              <div class="row g-2 align-items-end mb-3">
+                <div class="col-6 col-md-2">
+                  <label class="form-label small fw-bold">ชั้น</label>
+                  <select id="rosterManageLevel" class="form-select">
+                    <option value="">เลือกชั้น</option><option value="ม.1">ม.1</option><option value="ม.2">ม.2</option><option value="ม.3">ม.3</option><option value="ม.4">ม.4</option><option value="ม.5">ม.5</option><option value="ม.6">ม.6</option>
+                  </select>
+                </div>
+                <div class="col-6 col-md-2">
+                  <label class="form-label small fw-bold">ห้อง</label>
+                  <select id="rosterManageRoom" class="form-select">
+                    <option value="">เลือกห้อง</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option>
+                  </select>
+                </div>
+                <div class="col-6 col-md-2">
+                  <label class="form-label small fw-bold">สถานะ</label>
+                  <select id="rosterManageStatus" class="form-select">
+                    <option value="active">ใช้งาน</option><option value="inactive">ไม่ใช้งาน</option><option value="all">ทั้งหมด</option>
+                  </select>
+                </div>
+                <div class="col-6 col-md-3">
+                  <label class="form-label small fw-bold">ค้นหาในห้อง</label>
+                  <input id="rosterManageSearch" class="form-control" placeholder="ชื่อหรือรหัสนักเรียน" oninput="renderManagedRoster()">
+                </div>
+                <div class="col-12 col-md-3"><button class="btn btn-primary w-100 fw-bold" onclick="loadManagedRoster()"><i class="fas fa-search me-1"></i>โหลดรายชื่อ</button></div>
+              </div>
+              <div id="rosterManageSummary" class="alert alert-light border py-2 mb-2">เลือกชั้นและห้องเพื่อดูรายชื่อ</div>
+              <div class="table-responsive" style="max-height:460px;">
+                <table class="table table-sm table-bordered table-hover align-middle mb-0" id="rosterManageTable">
+                  <thead class="table-primary position-sticky top-0"><tr><th class="text-center">เลขที่</th><th>รหัส</th><th>ชื่อ-นามสกุล</th><th class="text-center">ห้อง</th><th class="text-center">สถานะ</th><th class="text-center">จัดการ</th></tr></thead>
+                  <tbody><tr><td colspan="6" class="text-center text-muted py-3">ยังไม่ได้โหลดรายชื่อ</td></tr></tbody>
+                </table>
+              </div>
+              <div id="rosterChangeHistory" class="mt-3 d-none"></div>
+            </div>
+
             <!-- จัดการรายชื่อนักเรียนเมื่อขึ้นปีการศึกษาใหม่ -->
             <div class="card p-3 shadow-sm mb-4" style="border-left: 5px solid #7c3aed !important; border-radius: 16px;">
               <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
@@ -1565,8 +1609,7 @@
                   <select id="adminVolRoom" class="form-select border-warning">
                     <option value="">-- ทุกห้อง --</option>
                     <option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option>
-                    <option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option>
-                    <option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option>
+                    <option value="5">5</option><option value="6">6</option>
                   </select>
                 </div>
                 <div class="col-2">
@@ -1841,6 +1884,7 @@
     let allTeachersData = []; // เพิ่มตัวแปรสำหรับเก็บชื่อครู
     let academicYearPreviewRows = [];
     let academicYearPreviewErrors = [];
+    let managedRosterStudents = [];
 
     function compressImageFile(file, maxDimension = 900, quality = 0.92) {
       return new Promise((resolve) => {
@@ -3566,6 +3610,120 @@ function loadTeachersForClub() {
       google.script.run.withSuccessHandler(res => { Swal.fire(res.success?'สำเร็จ':'ผิดพลาด', res.message, res.success?'success':'error'); btn.innerText = 'บันทึกข้อมูลนักเรียน'; btn.disabled = false; if(res.success) { document.getElementById('adminStuNo').value = ''; document.getElementById('adminStuId').value = ''; document.getElementById('adminStuName').value = ''; } }).adminAddStudent(no, id, name, level, room);
     }
 
+    function loadManagedRoster() {
+      const level = document.getElementById('rosterManageLevel').value;
+      const room = document.getElementById('rosterManageRoom').value;
+      const status = document.getElementById('rosterManageStatus').value;
+      if (!level || !room) return Swal.fire('กรุณาเลือกห้อง', 'เลือกชั้นและห้องก่อนโหลดรายชื่อ', 'warning');
+      const tbody = document.querySelector('#rosterManageTable tbody');
+      tbody.innerHTML = '<tr><td colspan="6" class="text-center py-3"><span class="spinner-border spinner-border-sm me-2"></span>กำลังโหลด...</td></tr>';
+      google.script.run
+        .withSuccessHandler(res => {
+          managedRosterStudents = res.students || [];
+          renderManagedRoster();
+        })
+        .withFailureHandler(err => {
+          managedRosterStudents = [];
+          tbody.innerHTML = `<tr><td colspan="6" class="text-center text-danger py-3">${academicEscape(err.message || 'โหลดรายชื่อไม่สำเร็จ')}</td></tr>`;
+        })
+        .getAdminStudentsByRoom(level, room, status);
+    }
+
+    function renderManagedRoster() {
+      const query = (document.getElementById('rosterManageSearch').value || '').trim().toLowerCase();
+      const rows = managedRosterStudents.filter(student => !query || String(student.name).toLowerCase().includes(query) || String(student.student_id).toLowerCase().includes(query));
+      const activeCount = managedRosterStudents.filter(student => Number(student.is_active) === 1).length;
+      const summary = document.getElementById('rosterManageSummary');
+      summary.className = 'alert alert-info border py-2 mb-2';
+      summary.textContent = `พบ ${managedRosterStudents.length} คน · ใช้งาน ${activeCount} คน · ไม่ใช้งาน ${managedRosterStudents.length-activeCount} คน${query ? ` · แสดงผลค้นหา ${rows.length} คน` : ''}`;
+      const tbody = document.querySelector('#rosterManageTable tbody');
+      if (!rows.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-3">ไม่พบรายชื่อตามเงื่อนไข</td></tr>';
+        return;
+      }
+      tbody.innerHTML = rows.map(student => {
+        const active = Number(student.is_active) === 1;
+        return `<tr class="${active ? '' : 'table-secondary'}">
+          <td class="text-center fw-bold">${academicEscape(student.no)}</td>
+          <td>${academicEscape(student.student_id)}</td>
+          <td>${academicEscape(student.name)}</td>
+          <td class="text-center">${academicEscape(student.level)}/${academicEscape(student.room)}</td>
+          <td class="text-center"><span class="badge ${active ? 'bg-success' : 'bg-secondary'}">${active ? 'ใช้งาน' : 'ไม่ใช้งาน'}</span></td>
+          <td class="text-center text-nowrap">
+            <button class="btn btn-sm btn-outline-primary me-1" onclick="editManagedStudent('${student.student_id}')"><i class="fas fa-pen"></i> แก้ไข</button>
+            <button class="btn btn-sm ${active ? 'btn-outline-danger' : 'btn-outline-success'}" onclick="toggleManagedStudent('${student.student_id}',${active ? 'false' : 'true'})"><i class="fas ${active ? 'fa-user-slash' : 'fa-user-check'}"></i> ${active ? 'พ้นสภาพ' : 'เปิดใช้งาน'}</button>
+          </td>
+        </tr>`;
+      }).join('');
+    }
+
+    function rosterRoomOptions(selected) {
+      return Array.from({length:6}, (_, index) => String(index + 1)).map(room => `<option value="${room}" ${room === String(selected) ? 'selected' : ''}>${room}</option>`).join('');
+    }
+
+    function editManagedStudent(studentId) {
+      const student = managedRosterStudents.find(item => String(item.student_id) === String(studentId));
+      if (!student) return Swal.fire('ไม่พบข้อมูล', 'กรุณาโหลดรายชื่อใหม่', 'error');
+      Swal.fire({
+        title: 'แก้ไขข้อมูลนักเรียน',
+        html: `<div class="text-start small text-muted mb-2">รหัสนักเรียน <b>${academicEscape(student.student_id)}</b> (แก้ไขรหัสไม่ได้เพื่อรักษาประวัติเดิม)</div>
+          <label class="form-label d-block text-start mb-1">เลขที่</label><input id="editRosterNo" class="swal2-input mt-0 mb-2" inputmode="numeric">
+          <label class="form-label d-block text-start mb-1">ชื่อ-นามสกุล</label><input id="editRosterName" class="swal2-input mt-0 mb-2">
+          <div class="row g-2"><div class="col-6"><label class="form-label d-block text-start mb-1">ชั้น</label><select id="editRosterLevel" class="form-select"><option>ม.1</option><option>ม.2</option><option>ม.3</option><option>ม.4</option><option>ม.5</option><option>ม.6</option></select></div>
+          <div class="col-6"><label class="form-label d-block text-start mb-1">ห้อง</label><select id="editRosterRoom" class="form-select">${rosterRoomOptions(student.room)}</select></div></div>`,
+        showCancelButton: true, confirmButtonText: 'บันทึกการแก้ไข', cancelButtonText: 'ยกเลิก', confirmButtonColor: '#0d6efd',
+        didOpen: () => {
+          document.getElementById('editRosterNo').value = student.no;
+          document.getElementById('editRosterName').value = student.name;
+          document.getElementById('editRosterLevel').value = student.level;
+        },
+        preConfirm: () => {
+          const data = {no:document.getElementById('editRosterNo').value.trim(), name:document.getElementById('editRosterName').value.trim(), level:document.getElementById('editRosterLevel').value, room:document.getElementById('editRosterRoom').value};
+          if (!/^[0-9]{1,3}$/.test(data.no) || !data.name) return Swal.showValidationMessage('กรุณากรอกเลขที่และชื่อให้ถูกต้อง');
+          return data;
+        }
+      }).then(result => {
+        if (!result.isConfirmed) return;
+        Swal.fire({title:'กำลังบันทึก...',allowOutsideClick:false,didOpen:()=>Swal.showLoading()});
+        google.script.run.withSuccessHandler(res => { Swal.fire('สำเร็จ',res.message,'success'); loadManagedRoster(); loadRecentRosterChanges(false); })
+          .withFailureHandler(err => Swal.fire('บันทึกไม่สำเร็จ',err.message || 'เกิดข้อผิดพลาด','error')).adminUpdateStudentRecord(studentId,result.value);
+      });
+    }
+
+    function toggleManagedStudent(studentId, activate) {
+      const student = managedRosterStudents.find(item => String(item.student_id) === String(studentId));
+      if (!student) return Swal.fire('ไม่พบข้อมูล', 'กรุณาโหลดรายชื่อใหม่', 'error');
+      if (activate) {
+        Swal.fire({title:`เปิดใช้งาน ${student.name}?`,text:'นักเรียนจะกลับมาปรากฏในรายชื่อปัจจุบัน',icon:'question',showCancelButton:true,confirmButtonText:'เปิดใช้งาน',cancelButtonText:'ยกเลิก',confirmButtonColor:'#198754'})
+          .then(result => { if (result.isConfirmed) submitStudentActiveChange(studentId,true,'เปิดใช้งานกลับ'); });
+        return;
+      }
+      Swal.fire({
+        title:`ทำ ${student.name} เป็นพ้นสภาพ?`,
+        text:'นักเรียนจะไม่ปรากฏในเช็กชื่อ คะแนน และการลงทะเบียนชุมนุม แต่ประวัติเดิมจะยังอยู่',
+        input:'text',inputLabel:'เหตุผล เช่น ลาออกกลางคัน / ย้ายสถานศึกษา',inputPlaceholder:'กรุณาระบุเหตุผล',
+        icon:'warning',showCancelButton:true,confirmButtonText:'ปิดใช้งาน',cancelButtonText:'ยกเลิก',confirmButtonColor:'#dc3545',
+        inputValidator:value => !value.trim() ? 'กรุณาระบุเหตุผล' : undefined
+      }).then(result => { if (result.isConfirmed) submitStudentActiveChange(studentId,false,result.value.trim()); });
+    }
+
+    function submitStudentActiveChange(studentId, activate, reason) {
+      Swal.fire({title:'กำลังบันทึก...',allowOutsideClick:false,didOpen:()=>Swal.showLoading()});
+      google.script.run.withSuccessHandler(res => { Swal.fire('สำเร็จ',res.message,'success'); loadManagedRoster(); loadRecentRosterChanges(false); })
+        .withFailureHandler(err => Swal.fire('ดำเนินการไม่สำเร็จ',err.message || 'เกิดข้อผิดพลาด','error')).adminSetStudentActive(studentId,activate,reason);
+    }
+
+    function loadRecentRosterChanges(showPanel = true) {
+      google.script.run.withSuccessHandler(res => {
+        const panel = document.getElementById('rosterChangeHistory');
+        const labels = {update:'แก้ไขข้อมูล',deactivate:'ปิดใช้งาน',reactivate:'เปิดใช้งาน'};
+        const changes = res.changes || [];
+        panel.innerHTML = `<div class="border rounded p-2"><div class="fw-bold mb-2"><i class="fas fa-clock-rotate-left me-1"></i>ประวัติการแก้ไขล่าสุด</div>${changes.length ? `<div class="table-responsive" style="max-height:260px;"><table class="table table-sm table-striped mb-0"><thead><tr><th>เวลา</th><th>รหัส</th><th>รายการ</th><th>เหตุผล</th><th>ผู้ดำเนินการ</th></tr></thead><tbody>${changes.map(change => `<tr><td>${academicEscape(change.changedAt)}</td><td>${academicEscape(change.studentId)}</td><td>${academicEscape(labels[change.action] || change.action)}</td><td>${academicEscape(change.reason || '-')}</td><td>${academicEscape(change.changedBy)}</td></tr>`).join('')}</tbody></table></div>` : '<div class="text-muted">ยังไม่มีประวัติการแก้ไข</div>'}</div>`;
+        panel.classList.remove('d-none');
+        if (showPanel) panel.scrollIntoView({behavior:'smooth',block:'nearest'});
+      }).withFailureHandler(err => Swal.fire('โหลดประวัติไม่สำเร็จ',err.message || 'เกิดข้อผิดพลาด','error')).getRecentStudentRosterChanges();
+    }
+
     function academicEscape(value) {
       return String(value ?? '').replace(/[&<>'"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch]));
     }
@@ -3623,7 +3781,7 @@ function loadTeachersForClub() {
       if (!/^[0-9A-Za-z_-]{3,30}$/.test(row.studentId)) errors.push('รหัสนักเรียนไม่ถูกต้อง');
       if (!row.name || row.name.length > 255 || /[<>{}\x00-\x1F]/.test(row.name)) errors.push('ชื่อไม่ถูกต้อง');
       if (!/^ม\.[1-6]$/.test(row.level)) errors.push('ชั้นต้องเป็น ม.1-ม.6');
-      if (!/^(?:[1-9]|1[0-2])$/.test(row.room)) errors.push('ห้องต้องเป็น 1-12');
+      if (!/^[1-6]$/.test(row.room)) errors.push('ห้องต้องเป็น 1-6');
       if (row.studentId && seen.has(row.studentId)) errors.push('รหัสซ้ำในไฟล์');
       if (row.studentId) seen.add(row.studentId);
       return {...row, rowNumber, errors};

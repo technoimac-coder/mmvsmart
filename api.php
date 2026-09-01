@@ -111,6 +111,18 @@ function routeAction($action, $args, $pdo) {
         case 'adminAddStudent':
             return adminAddStudent($args[0], $args[1], $args[2], $args[3], $args[4], $pdo);
 
+        case 'getAdminStudentsByRoom':
+            return getAdminStudentsByRoom($args[0], $args[1], $args[2] ?? 'active', $pdo);
+
+        case 'adminUpdateStudentRecord':
+            return adminUpdateStudentRecord($args[0], $args[1], $pdo);
+
+        case 'adminSetStudentActive':
+            return adminSetStudentActive($args[0], $args[1], $args[2] ?? '', $pdo);
+
+        case 'getRecentStudentRosterChanges':
+            return getRecentStudentRosterChanges($pdo);
+
         case 'getAcademicYearSetupData':
             return getAcademicYearSetupData($pdo);
 
@@ -634,6 +646,7 @@ function adminAddUser($user, $pass, $name, $advisoryRoom, $headLevel, $avatarBas
 
 function adminAddStudent($no, $id, $name, $level, $room, $pdo) {
     try {
+        requireAdminSession();
         $year = currentAcademicYear($pdo);
         $stmt = $pdo->prepare("INSERT INTO students (no, student_id, name, level, room, is_active, academic_year) VALUES (?, ?, ?, ?, ?, 1, ?) ON DUPLICATE KEY UPDATE no = VALUES(no), name = VALUES(name), level = VALUES(level), room = VALUES(room), is_active = 1, academic_year = VALUES(academic_year)");
         $stmt->execute([$no, trim($id), trim($name), trim($level), trim($room), $year]);
@@ -708,6 +721,19 @@ function ensureAcademicYearSchema($pdo) {
         KEY idx_import_created (created_at)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
+    $pdo->exec("CREATE TABLE IF NOT EXISTS student_roster_changes (
+        id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+        student_id VARCHAR(100) NOT NULL,
+        action VARCHAR(30) NOT NULL,
+        old_data LONGTEXT NULL,
+        new_data LONGTEXT NULL,
+        reason VARCHAR(500) NULL,
+        changed_by VARCHAR(255) NOT NULL,
+        changed_at DATETIME NOT NULL,
+        KEY idx_roster_change_student (student_id),
+        KEY idx_roster_change_date (changed_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
     $indexStmt = $pdo->prepare("SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'students' AND INDEX_NAME = 'idx_students_active_class'");
     $indexStmt->execute([$dbName]);
     if ((int)$indexStmt->fetchColumn() === 0) {
@@ -720,6 +746,144 @@ function requireAdminSession() {
         throw new RuntimeException('เซสชันผู้ดูแลระบบหมดอายุ กรุณาออกจากระบบแล้วเข้าสู่ระบบใหม่');
     }
     return trim($_SESSION['teacher_name'] ?? $_SESSION['username']);
+}
+
+function validateStudentMasterData($data) {
+    if (!is_array($data)) throw new InvalidArgumentException('รูปแบบข้อมูลนักเรียนไม่ถูกต้อง');
+    $no = trim((string)($data['no'] ?? ''));
+    $name = trim((string)($data['name'] ?? ''));
+    $level = trim((string)($data['level'] ?? ''));
+    $room = trim((string)($data['room'] ?? ''));
+    $level = preg_replace('/^ม\.?\s*([1-6])$/u', 'ม.$1', $level);
+    if (!preg_match('/^[0-9]{1,3}$/', $no) || (int)$no < 1) throw new InvalidArgumentException('เลขที่ต้องเป็นตัวเลข 1-999');
+    if ($name === '' || mb_strlen($name, 'UTF-8') > 255 || preg_match('/[<>{}\x00-\x1F]/u', $name)) throw new InvalidArgumentException('ชื่อนักเรียนไม่ถูกต้อง');
+    if (!preg_match('/^ม\.[1-6]$/u', $level)) throw new InvalidArgumentException('ชั้นเรียนต้องเป็น ม.1 ถึง ม.6');
+    if (!preg_match('/^[1-6]$/', $room)) throw new InvalidArgumentException('ห้องเรียนต้องเป็น 1 ถึง 6');
+    return ['no' => (string)(int)$no, 'name' => $name, 'level' => $level, 'room' => $room];
+}
+
+function validateStudentIdValue($studentId) {
+    $studentId = trim((string)$studentId);
+    if (!preg_match('/^[0-9A-Za-z_-]{3,30}$/', $studentId)) throw new InvalidArgumentException('รหัสนักเรียนไม่ถูกต้อง');
+    return $studentId;
+}
+
+function writeStudentRosterChange($pdo, $studentId, $action, $oldData, $newData, $reason, $adminName) {
+    $stmt = $pdo->prepare("INSERT INTO student_roster_changes
+        (student_id, action, old_data, new_data, reason, changed_by, changed_at)
+        VALUES (?, ?, ?, ?, ?, ?, NOW())");
+    $stmt->execute([
+        $studentId,
+        $action,
+        $oldData === null ? null : json_encode($oldData, JSON_UNESCAPED_UNICODE),
+        $newData === null ? null : json_encode($newData, JSON_UNESCAPED_UNICODE),
+        $reason !== '' ? $reason : null,
+        $adminName
+    ]);
+}
+
+function getAdminStudentsByRoom($level, $room, $status, $pdo) {
+    requireAdminSession();
+    ensureAcademicYearSchema($pdo);
+    $level = trim((string)$level);
+    $room = trim((string)$room);
+    if (!preg_match('/^ม\.[1-6]$/u', $level) || !preg_match('/^[1-6]$/', $room)) {
+        throw new InvalidArgumentException('กรุณาเลือกชั้นและห้องให้ถูกต้อง');
+    }
+    $status = in_array($status, ['active', 'inactive', 'all'], true) ? $status : 'active';
+    $sql = "SELECT no, student_id, name, level, room, is_active, academic_year FROM students WHERE level = ? AND room = ?";
+    if ($status === 'active') $sql .= " AND is_active = 1";
+    if ($status === 'inactive') $sql .= " AND is_active = 0";
+    $sql .= " ORDER BY is_active DESC, CAST(no AS UNSIGNED), name";
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute([$level, $room]);
+    return ['success' => true, 'students' => $stmt->fetchAll(), 'status' => $status];
+}
+
+function adminUpdateStudentRecord($studentId, $data, $pdo) {
+    $adminName = requireAdminSession();
+    ensureAcademicYearSchema($pdo);
+    $studentId = validateStudentIdValue($studentId);
+    $data = validateStudentMasterData($data);
+    try {
+        $pdo->beginTransaction();
+        $find = $pdo->prepare("SELECT no, student_id, name, level, room, is_active, academic_year FROM students WHERE student_id = ? FOR UPDATE");
+        $find->execute([$studentId]);
+        $old = $find->fetch();
+        if (!$old) throw new RuntimeException('ไม่พบข้อมูลนักเรียน');
+
+        if ((int)$old['is_active'] === 1) {
+            $duplicate = $pdo->prepare("SELECT COUNT(*) FROM students WHERE is_active = 1 AND level = ? AND room = ? AND no = ? AND student_id <> ?");
+            $duplicate->execute([$data['level'], $data['room'], $data['no'], $studentId]);
+            if ((int)$duplicate->fetchColumn() > 0) throw new RuntimeException('เลขที่นี้มีนักเรียนใช้งานอยู่แล้วในห้องปลายทาง');
+        }
+
+        $update = $pdo->prepare("UPDATE students SET no = ?, name = ?, level = ?, room = ? WHERE student_id = ?");
+        $update->execute([$data['no'], $data['name'], $data['level'], $data['room'], $studentId]);
+        $clubUpdate = $pdo->prepare("UPDATE club_members SET name = ?, level = ?, room = ? WHERE student_id = ?");
+        $clubUpdate->execute([$data['name'], $data['level'], $data['room'], $studentId]);
+        $new = array_merge($old, $data);
+        writeStudentRosterChange($pdo, $studentId, 'update', $old, $new, '', $adminName);
+        $pdo->commit();
+        return ['success' => true, 'message' => 'แก้ไขข้อมูลนักเรียนเรียบร้อยแล้ว', 'student' => $new];
+    } catch (Exception $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        throw $e;
+    }
+}
+
+function adminSetStudentActive($studentId, $active, $reason, $pdo) {
+    $adminName = requireAdminSession();
+    ensureAcademicYearSchema($pdo);
+    $studentId = validateStudentIdValue($studentId);
+    $active = filter_var($active, FILTER_VALIDATE_BOOLEAN);
+    $reason = trim((string)$reason);
+    if ($reason !== '' && (mb_strlen($reason, 'UTF-8') > 500 || preg_match('/[<>{}\x00-\x1F]/u', $reason))) {
+        throw new InvalidArgumentException('เหตุผลไม่ถูกต้องหรือยาวเกิน 500 ตัวอักษร');
+    }
+    if (!$active && $reason === '') {
+        throw new InvalidArgumentException('กรุณาระบุเหตุผลการปิดใช้งาน (ไม่เกิน 500 ตัวอักษร)');
+    }
+    try {
+        $pdo->beginTransaction();
+        $find = $pdo->prepare("SELECT no, student_id, name, level, room, is_active, academic_year FROM students WHERE student_id = ? FOR UPDATE");
+        $find->execute([$studentId]);
+        $old = $find->fetch();
+        if (!$old) throw new RuntimeException('ไม่พบข้อมูลนักเรียน');
+        if ((bool)$old['is_active'] === $active) {
+            $pdo->rollBack();
+            return ['success' => true, 'message' => $active ? 'นักเรียนเปิดใช้งานอยู่แล้ว' : 'นักเรียนปิดใช้งานอยู่แล้ว'];
+        }
+        if ($active) {
+            $duplicate = $pdo->prepare("SELECT COUNT(*) FROM students WHERE is_active = 1 AND level = ? AND room = ? AND no = ? AND student_id <> ?");
+            $duplicate->execute([$old['level'], $old['room'], $old['no'], $studentId]);
+            if ((int)$duplicate->fetchColumn() > 0) throw new RuntimeException('ไม่สามารถเปิดใช้งานได้ เพราะเลขที่ซ้ำกับนักเรียนในห้องนี้ กรุณาแก้เลขที่ก่อน');
+        }
+        $update = $pdo->prepare("UPDATE students SET is_active = ? WHERE student_id = ?");
+        $update->execute([$active ? 1 : 0, $studentId]);
+        if (!$active) {
+            // Remove only the current club registration. Historical club
+            // attendance remains untouched.
+            $removeClub = $pdo->prepare("DELETE FROM club_members WHERE student_id = ?");
+            $removeClub->execute([$studentId]);
+        }
+        $new = $old;
+        $new['is_active'] = $active ? 1 : 0;
+        writeStudentRosterChange($pdo, $studentId, $active ? 'reactivate' : 'deactivate', $old, $new, $reason, $adminName);
+        $pdo->commit();
+        return ['success' => true, 'message' => $active ? 'เปิดใช้งานนักเรียนเรียบร้อยแล้ว' : 'ปิดใช้งานนักเรียนเรียบร้อยแล้ว โดยยังเก็บประวัติเดิมทั้งหมด'];
+    } catch (Exception $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        throw $e;
+    }
+}
+
+function getRecentStudentRosterChanges($pdo) {
+    requireAdminSession();
+    ensureAcademicYearSchema($pdo);
+    $stmt = $pdo->query("SELECT student_id studentId, action, old_data oldData, new_data newData, reason, changed_by changedBy, changed_at changedAt
+        FROM student_roster_changes ORDER BY id DESC LIMIT 50");
+    return ['success' => true, 'changes' => $stmt->fetchAll()];
 }
 
 function validateAcademicYear($year) {
@@ -751,7 +915,7 @@ function normalizeRosterRows($rows) {
         if (!preg_match('/^[0-9A-Za-z_-]{3,30}$/', $id)) throw new InvalidArgumentException("รหัสนักเรียนในแถว {$line} ไม่ถูกต้อง");
         if ($name === '' || mb_strlen($name, 'UTF-8') > 255 || preg_match('/[<>{}\x00-\x1F]/u', $name)) throw new InvalidArgumentException("ชื่อในแถว {$line} ไม่ถูกต้อง");
         if (!preg_match('/^ม\.[1-6]$/u', $level)) throw new InvalidArgumentException("ชั้นเรียนในแถว {$line} ต้องเป็น ม.1 ถึง ม.6");
-        if (!preg_match('/^(?:[1-9]|1[0-2])$/', $room)) throw new InvalidArgumentException("ห้องในแถว {$line} ต้องเป็น 1 ถึง 12");
+        if (!preg_match('/^[1-6]$/', $room)) throw new InvalidArgumentException("ห้องในแถว {$line} ต้องเป็น 1 ถึง 6");
         if (isset($seenIds[$id])) throw new InvalidArgumentException("รหัสนักเรียน {$id} ซ้ำในไฟล์ (แถว {$line})");
 
         $seenIds[$id] = true;
