@@ -791,7 +791,7 @@ function getAdminStudentsByRoom($level, $room, $status, $pdo) {
         throw new InvalidArgumentException('กรุณาเลือกชั้นและห้องให้ถูกต้อง');
     }
     $status = in_array($status, ['active', 'inactive', 'all'], true) ? $status : 'active';
-    $sql = "SELECT no, student_id, name, level, room, is_active, academic_year FROM students WHERE level = ? AND room = ?";
+    $sql = "SELECT no, student_id, name, level, room, avatar, is_active, academic_year FROM students WHERE level = ? AND room = ?";
     if ($status === 'active') $sql .= " AND is_active = 1";
     if ($status === 'inactive') $sql .= " AND is_active = 0";
     $sql .= " ORDER BY is_active DESC, CAST(no AS UNSIGNED), name";
