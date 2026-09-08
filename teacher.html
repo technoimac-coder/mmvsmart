@@ -1993,6 +1993,44 @@
     let allTeachersData = []; // เพิ่มตัวแปรสำหรับเก็บชื่อครู
     let academicYearPreviewRows = [];
     let academicYearPreviewErrors = [];
+
+    function refreshDateAfterMidnight() {
+      const newDate = getLocalDateValue();
+      if (newDate === currentAutoDate) return;
+
+      const previousDate = currentAutoDate;
+      currentAutoDate = newDate;
+      const dateInput = document.getElementById('dateInput');
+      const clubDateInput = document.getElementById('clubAttendanceDate');
+      const attendanceUsesAutoDate = !dateInput.value || dateInput.value === previousDate;
+      const clubUsesAutoDate = !clubDateInput.value || clubDateInput.value === previousDate;
+
+      if (attendanceUsesAutoDate) dateInput.value = newDate;
+      if (clubUsesAutoDate) clubDateInput.value = newDate;
+      ['indvStartDate', 'indvEndDate'].forEach(id => {
+        const input = document.getElementById(id);
+        if (!input.value || input.value === previousDate) input.value = newDate;
+      });
+
+      const currentTime = new Date();
+      document.getElementById('timeInput').value =
+        `${String(currentTime.getHours()).padStart(2, '0')}:${String(currentTime.getMinutes()).padStart(2, '0')}`;
+
+      if (attendanceUsesAutoDate && document.getElementById('attendanceSection').style.display !== 'none') {
+        checkAndLoadAtt();
+      }
+      if (clubUsesAutoDate && document.getElementById('clubSection').style.display !== 'none') {
+        const clubName = document.getElementById('clubAttendanceSelect').value;
+        if (clubName) loadAttendanceTable(clubName);
+      }
+    }
+
+    // ตรวจทุกนาที และตรวจทันทีเมื่อกลับมาเปิดแท็บหลังเครื่องพักหน้าจอ
+    setInterval(refreshDateAfterMidnight, 60000);
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) refreshDateAfterMidnight();
+    });
+    window.addEventListener('focus', refreshDateAfterMidnight);
     let managedRosterStudents = [];
 
     function compressImageFile(file, maxDimension = 900, quality = 0.92) {

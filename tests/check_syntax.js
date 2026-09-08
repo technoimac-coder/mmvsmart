@@ -67,5 +67,8 @@ if (!html.includes('Array.from({length:6}') || !html.includes("errors.push('à¸«à
 if (/id="rosterManageRoom"[\s\S]*?<\/select>/.exec(html)?.[0].includes('value="7"')) {
   throw new Error('Roster room selector must not offer room 7');
 }
+['getLocalDateValue', 'refreshDateAfterMidnight', 'setInterval(refreshDateAfterMidnight, 60000)'].forEach(required => {
+  if (!html.includes(required)) throw new Error(`Missing automatic date rollover support: ${required}`);
+});
 
 console.log(`Syntax OK + Excel round-trip: api.php, google-mock.js, teacher.html (${scripts.length} inline scripts)`);
