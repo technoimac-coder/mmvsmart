@@ -98,6 +98,9 @@ function routeAction($action, $args, $pdo) {
             
         case 'getAdminTeacherListWithAvatars':
             return getAdminTeacherListWithAvatars($pdo);
+
+        case 'adminUpdateTeacherAssignment':
+            return adminUpdateTeacherAssignment($args[0], $args[1] ?? '', $args[2] ?? '', $pdo);
             
         case 'adminUpdateSingleStudentAvatar':
             return adminUpdateSingleStudentAvatar($args[0], $args[1], $pdo);
@@ -488,6 +491,7 @@ function adminRemoveTeacherAvatar($userId, $pdo) {
 
 function getAdminTeacherListWithAvatars($pdo) {
     try {
+        requireAdminSession();
         $stmt = $pdo->query("SELECT id, username, name, advisory_room, head_level, avatar FROM users ORDER BY id ASC");
         return ['success' => true, 'teachers' => $stmt->fetchAll(PDO::FETCH_ASSOC)];
     } catch (Exception $e) {
@@ -739,6 +743,40 @@ function ensureAcademicYearSchema($pdo) {
     if ((int)$indexStmt->fetchColumn() === 0) {
         $pdo->exec("CREATE INDEX idx_students_active_class ON students (is_active, level, room, no)");
     }
+}
+
+function adminUpdateTeacherAssignment($userId, $advisoryRoom, $headLevel, $pdo) {
+    requireAdminSession();
+    $userId = filter_var($userId, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+    if ($userId === false) throw new InvalidArgumentException('รหัสบัญชีครูไม่ถูกต้อง');
+
+    $advisoryRoom = trim((string)$advisoryRoom);
+    $headLevel = trim((string)$headLevel);
+    if ($advisoryRoom !== '' && !preg_match('/^ม\.[1-6]\/[1-6]$/u', $advisoryRoom)) {
+        throw new InvalidArgumentException('ห้องที่ปรึกษาต้องเป็น ม.1/1 ถึง ม.6/6');
+    }
+    if ($headLevel !== '' && !preg_match('/^ม\.[1-6]$/u', $headLevel)) {
+        throw new InvalidArgumentException('ระดับชั้นที่รับผิดชอบต้องเป็น ม.1 ถึง ม.6');
+    }
+
+    $stmt = $pdo->prepare("SELECT id, name FROM users WHERE id = ?");
+    $stmt->execute([$userId]);
+    $teacher = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$teacher) throw new RuntimeException('ไม่พบบัญชีครูที่ต้องการแก้ไข');
+
+    $update = $pdo->prepare("UPDATE users SET advisory_room = ?, head_level = ? WHERE id = ?");
+    $update->execute([$advisoryRoom !== '' ? $advisoryRoom : null, $headLevel !== '' ? $headLevel : null, $userId]);
+
+    return [
+        'success' => true,
+        'message' => 'ปรับสิทธิ์ครูที่ปรึกษาเรียบร้อยแล้ว กรุณาให้ครูออกจากระบบและเข้าสู่ระบบใหม่',
+        'teacher' => [
+            'id' => (int)$userId,
+            'name' => $teacher['name'],
+            'advisory_room' => $advisoryRoom,
+            'head_level' => $headLevel
+        ]
+    ];
 }
 
 function requireAdminSession() {

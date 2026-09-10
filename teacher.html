@@ -1377,7 +1377,7 @@
                       <small class="text-muted">อัปโหลดรูปครูรายบุคคล หรืออัปโหลดกลุ่มด้วยชื่อครู</small>
                     </div>
                     <button class="btn btn-primary fw-bold btn-sm shadow-sm" onclick="openBulkAvatarModal()">
-                      <i class="fas fa-images me-1"></i> จัดการรูปครู
+                      <i class="fas fa-users-cog me-1"></i> จัดการครูที่ปรึกษาและรูปภาพ
                     </button>
                   </div>
                 </div>
@@ -1467,7 +1467,7 @@
                     <i class="fas fa-user-plus me-1"></i> บันทึกข้อมูลและรูปภาพครู
                   </button>
                   <button class="btn btn-outline-primary w-100 fw-bold shadow-sm" onclick="openBulkAvatarModal()">
-                    <i class="fas fa-images me-1"></i> จัดการรูปภาพครูทั้งหมด
+                    <i class="fas fa-users-cog me-1"></i> จัดการครูที่ปรึกษาและรูปภาพ
                   </button>
                 </div>
               </div>
@@ -1753,7 +1753,7 @@
     <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
       <div class="modal-content border-0 shadow">
         <div class="modal-header bg-primary text-white">
-          <h5 class="modal-title fw-bold" id="bulkAvatarModalLabel"><i class="fas fa-images me-2"></i>จัดการรูปภาพโปรไฟล์ครูทั้งหมด</h5>
+          <h5 class="modal-title fw-bold" id="bulkAvatarModalLabel"><i class="fas fa-users-cog me-2"></i>จัดการข้อมูลและรูปภาพครู</h5>
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body p-3 p-md-4">
@@ -1780,7 +1780,7 @@
 
           <!-- แกลเลอรีครูและสถานะรูปภาพปัจจุบัน -->
           <div class="d-flex justify-content-between align-items-center mb-2">
-            <h6 class="fw-bold text-dark mb-0"><i class="fas fa-users text-primary me-1"></i> รายชื่อครูและสถานะรูปภาพทั้งหมด</h6>
+            <h6 class="fw-bold text-dark mb-0"><i class="fas fa-users text-primary me-1"></i> รายชื่อครู ห้องที่ปรึกษา และรูปภาพ</h6>
             <button class="btn btn-sm btn-outline-secondary" onclick="loadAdminTeacherAvatarsList()"><i class="fas fa-sync-alt me-1"></i> รีเฟรช</button>
           </div>
           
@@ -1792,6 +1792,53 @@
 
           <!-- Hidden Input สำหรับอัปโหลดรูปรายบุคคล -->
           <input type="file" id="singleTeacherAvatarInput" accept="image/*" style="display:none;" onchange="handleSingleTeacherAvatarFile(event)">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal แก้ไขห้องที่ปรึกษาโดยไม่เปลี่ยนรหัสผ่าน -->
+  <div class="modal fade" id="teacherAssignmentModal" tabindex="-1" aria-labelledby="teacherAssignmentModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-0 shadow">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title fw-bold" id="teacherAssignmentModalLabel"><i class="fas fa-school me-2"></i>แก้ไขครูที่ปรึกษา</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4">
+          <input type="hidden" id="teacherAssignmentId">
+          <div class="alert alert-light border mb-3">
+            <div class="small text-muted">กำลังแก้ไขบัญชี</div>
+            <div class="fw-bold" id="teacherAssignmentName">-</div>
+          </div>
+          <label class="small text-muted fw-bold">ครูที่ปรึกษาประจำชั้น</label>
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <select id="teacherAssignmentLevel" class="form-select">
+                <option value="">-- ไม่ระบุชั้น --</option>
+                <option value="ม.1">ม.1</option><option value="ม.2">ม.2</option><option value="ม.3">ม.3</option>
+                <option value="ม.4">ม.4</option><option value="ม.5">ม.5</option><option value="ม.6">ม.6</option>
+              </select>
+            </div>
+            <div class="col-6">
+              <select id="teacherAssignmentRoom" class="form-select">
+                <option value="">-- ไม่ระบุห้อง --</option>
+                <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+                <option value="4">4</option><option value="5">5</option><option value="6">6</option>
+              </select>
+            </div>
+          </div>
+          <label class="small text-muted fw-bold">หัวหน้าระดับ (ถ้ามี)</label>
+          <select id="teacherAssignmentHeadLevel" class="form-select mb-3">
+            <option value="">-- ไม่ได้เป็นหัวหน้าระดับ --</option>
+            <option value="ม.1">ม.1</option><option value="ม.2">ม.2</option><option value="ม.3">ม.3</option>
+            <option value="ม.4">ม.4</option><option value="ม.5">ม.5</option><option value="ม.6">ม.6</option>
+          </select>
+          <div class="alert alert-info small mb-0"><i class="fas fa-shield-alt me-1"></i> การแก้ไขนี้ไม่เปลี่ยนชื่อผู้ใช้ รหัสผ่าน รูปภาพ หรือประวัติเดิม</div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-light" data-bs-dismiss="modal">ยกเลิก</button>
+          <button type="button" class="btn btn-primary fw-bold" id="btnSaveTeacherAssignment" onclick="saveTeacherAssignment()"><i class="fas fa-save me-1"></i>บันทึกสิทธิ์</button>
         </div>
       </div>
     </div>
@@ -1863,10 +1910,18 @@
 
   <script>
     const now = new Date();
-    document.getElementById('dateInput').valueAsDate = now;
-    document.getElementById('clubAttendanceDate').valueAsDate = now; // เพิ่มสำหรับหน้าชุมนุม
-    document.getElementById('indvStartDate').valueAsDate = now;
-    document.getElementById('indvEndDate').valueAsDate = now;
+    function getLocalDateValue(date = new Date()) {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+
+    let currentAutoDate = getLocalDateValue(now);
+    document.getElementById('dateInput').value = currentAutoDate;
+    document.getElementById('clubAttendanceDate').value = currentAutoDate; // เพิ่มสำหรับหน้าชุมนุม
+    document.getElementById('indvStartDate').value = currentAutoDate;
+    document.getElementById('indvEndDate').value = currentAutoDate;
     const hours = String(now.getHours()).padStart(2, '0');
     const minutes = String(now.getMinutes()).padStart(2, '0');
     document.getElementById('timeInput').value = `${hours}:${minutes}`;
@@ -1884,6 +1939,44 @@
     let allTeachersData = []; // เพิ่มตัวแปรสำหรับเก็บชื่อครู
     let academicYearPreviewRows = [];
     let academicYearPreviewErrors = [];
+
+    function refreshDateAfterMidnight() {
+      const newDate = getLocalDateValue();
+      if (newDate === currentAutoDate) return;
+
+      const previousDate = currentAutoDate;
+      currentAutoDate = newDate;
+      const dateInput = document.getElementById('dateInput');
+      const clubDateInput = document.getElementById('clubAttendanceDate');
+      const attendanceUsesAutoDate = !dateInput.value || dateInput.value === previousDate;
+      const clubUsesAutoDate = !clubDateInput.value || clubDateInput.value === previousDate;
+
+      if (attendanceUsesAutoDate) dateInput.value = newDate;
+      if (clubUsesAutoDate) clubDateInput.value = newDate;
+      ['indvStartDate', 'indvEndDate'].forEach(id => {
+        const input = document.getElementById(id);
+        if (!input.value || input.value === previousDate) input.value = newDate;
+      });
+
+      const currentTime = new Date();
+      document.getElementById('timeInput').value =
+        `${String(currentTime.getHours()).padStart(2, '0')}:${String(currentTime.getMinutes()).padStart(2, '0')}`;
+
+      if (attendanceUsesAutoDate && document.getElementById('attendanceSection').style.display !== 'none') {
+        checkAndLoadAtt();
+      }
+      if (clubUsesAutoDate && document.getElementById('clubSection').style.display !== 'none') {
+        const clubName = document.getElementById('clubAttendanceSelect').value;
+        if (clubName) loadAttendanceTable(clubName);
+      }
+    }
+
+    // ตรวจทุกนาที และตรวจทันทีเมื่อกลับมาเปิดแท็บหลังเครื่องพักหน้าจอ
+    setInterval(refreshDateAfterMidnight, 60000);
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) refreshDateAfterMidnight();
+    });
+    window.addEventListener('focus', refreshDateAfterMidnight);
     let managedRosterStudents = [];
 
     function compressImageFile(file, maxDimension = 900, quality = 0.92) {
@@ -2048,6 +2141,9 @@
                 </div>
               </div>
               <div class="d-flex align-items-center gap-2 ps-2 flex-shrink-0">
+                <button class="btn btn-sm btn-outline-success py-1 px-2 fw-bold" style="font-size:0.8rem;" onclick="openTeacherAssignmentEditor(${t.id})" title="แก้ไขห้องที่ปรึกษาโดยไม่เปลี่ยนรหัสผ่าน">
+                  <i class="fas fa-school"></i>
+                </button>
                 <button class="btn btn-sm btn-outline-primary py-1 px-2 fw-bold" style="font-size:0.8rem;" onclick="triggerUploadSingleTeacherAvatar(${t.id}, '${safeName}')" title="อัปโหลด/เปลี่ยนรูปครูท่านนี้">
                   <i class="fas fa-camera me-1"></i>${hasAvatar ? 'เปลี่ยน' : 'เพิ่มรูป'}
                 </button>
@@ -2057,6 +2153,57 @@
           </div>
         `;
       }).join('');
+    }
+
+    function openTeacherAssignmentEditor(id) {
+      const selected = adminTeachersList.find(t => String(t.id) === String(id));
+      if (!selected) {
+        Swal.fire('ไม่พบข้อมูล', 'กรุณารีเฟรชรายชื่อครูแล้วลองอีกครั้ง', 'warning');
+        return;
+      }
+      const advisoryParts = String(selected.advisory_room || '').split('/');
+      document.getElementById('teacherAssignmentId').value = selected.id;
+      document.getElementById('teacherAssignmentName').textContent = `ครู${selected.name}`;
+      document.getElementById('teacherAssignmentLevel').value = advisoryParts[0] || '';
+      document.getElementById('teacherAssignmentRoom').value = advisoryParts[1] || '';
+      document.getElementById('teacherAssignmentHeadLevel').value = selected.head_level || '';
+      bootstrap.Modal.getOrCreateInstance(document.getElementById('teacherAssignmentModal')).show();
+    }
+
+    function saveTeacherAssignment() {
+      const id = Number(document.getElementById('teacherAssignmentId').value);
+      const level = document.getElementById('teacherAssignmentLevel').value;
+      const room = document.getElementById('teacherAssignmentRoom').value;
+      const headLevelValue = document.getElementById('teacherAssignmentHeadLevel').value;
+      if ((level && !room) || (!level && room)) {
+        Swal.fire('ข้อมูลไม่ครบ', 'กรุณาเลือกทั้งชั้นและห้อง หรือไม่ระบุทั้งสองช่อง', 'warning');
+        return;
+      }
+      const advisoryValue = level && room ? `${level}/${room}` : '';
+      const button = document.getElementById('btnSaveTeacherAssignment');
+      button.disabled = true;
+      button.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>กำลังบันทึก...';
+
+      google.script.run
+        .withSuccessHandler(res => {
+          button.disabled = false;
+          button.innerHTML = '<i class="fas fa-save me-1"></i>บันทึกสิทธิ์';
+          if (!res || !res.success) {
+            Swal.fire('บันทึกไม่สำเร็จ', res?.message || 'เกิดข้อผิดพลาด', 'error');
+            return;
+          }
+          const index = adminTeachersList.findIndex(t => String(t.id) === String(id));
+          if (index >= 0) Object.assign(adminTeachersList[index], res.teacher);
+          renderTeacherAvatarGrid(adminTeachersList);
+          bootstrap.Modal.getInstance(document.getElementById('teacherAssignmentModal'))?.hide();
+          Swal.fire('สำเร็จ', res.message, 'success');
+        })
+        .withFailureHandler(err => {
+          button.disabled = false;
+          button.innerHTML = '<i class="fas fa-save me-1"></i>บันทึกสิทธิ์';
+          Swal.fire('บันทึกไม่สำเร็จ', err.message || 'เกิดข้อผิดพลาด', 'error');
+        })
+        .adminUpdateTeacherAssignment(id, advisoryValue, headLevelValue);
     }
 
     let currentUploadTeacherId = null;
