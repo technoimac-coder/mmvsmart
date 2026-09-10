@@ -52,6 +52,12 @@ if (roster[1][1] !== '74001') throw new Error('SheetJS roster round-trip failed'
 ['rosterManageTable', 'loadManagedRoster', 'toggleManagedStudent'].forEach(required => {
   if (!html.includes(required)) throw new Error(`Missing roster UI: ${required}`);
 });
+['adminUpdateTeacherAssignment', 'requireAdminSession()', 'advisory_room = ?, head_level = ?'].forEach(required => {
+  if (!apiSource.includes(required)) throw new Error(`Missing secure teacher assignment API: ${required}`);
+});
+['teacherAssignmentModal', 'openTeacherAssignmentEditor', 'saveTeacherAssignment'].forEach(required => {
+  if (!html.includes(required)) throw new Error(`Missing teacher assignment UI: ${required}`);
+});
 if (!apiSource.includes('name, level, room, avatar, is_active')) {
   throw new Error('Roster API must return the student avatar');
 }
