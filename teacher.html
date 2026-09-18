@@ -750,15 +750,6 @@
               </div>
             </div>
 
-            <div class="card border-0 shadow-sm p-3 mb-4" id="globalAcademicPeriodCard" style="border-left:5px solid #0d6efd !important;border-radius:16px;">
-              <div class="row g-2 align-items-end">
-                <div class="col-12 col-md-4"><div class="fw-bold text-primary"><i class="fas fa-calendar-alt me-1"></i>รอบข้อมูลที่กำลังใช้งาน</div><small id="academicPeriodHelp" class="text-muted">กำหนดโดยผู้ดูแลระบบและใช้ร่วมกันทุกระบบ</small></div>
-                <div class="col-6 col-md-3"><label class="form-label small fw-bold">ปีการศึกษา</label><input id="globalAcademicYear" class="form-control" inputmode="numeric" maxlength="4"></div>
-                <div class="col-6 col-md-3"><label class="form-label small fw-bold">ภาคเรียน</label><select id="globalSemester" class="form-select"><option value="1">ภาคเรียนที่ 1</option><option value="2">ภาคเรียนที่ 2</option></select></div>
-                <div class="col-12 col-md-2"><button id="academicPeriodSaveButton" class="btn btn-primary w-100 fw-bold" onclick="changeGlobalAcademicPeriod()"><i class="fas fa-save me-1"></i>บันทึกค่ากลาง</button></div>
-              </div>
-            </div>
-
             <div class="d-flex align-items-center justify-content-between mb-3">
               <h6 class="fw-bold text-dark mb-0"><i class="fas fa-bolt text-warning me-1"></i> เมนูด่วน (Quick Menu)</h6>
             </div>
@@ -1446,6 +1437,15 @@
           <!-- ================= SECTION ADMIN (ระบบหลัก) ================= -->
           <div id="adminSection" style="display:none;">
             <div class="alert alert-warning text-center fw-bold shadow-sm">โหมดผู้ดูแลระบบ (Admin)</div>
+
+            <div class="card border-0 shadow-sm p-3 mb-4" id="globalAcademicPeriodCard" style="border-left:5px solid #0d6efd !important;border-radius:16px;">
+              <div class="row g-2 align-items-end">
+                <div class="col-12 col-md-4"><div class="fw-bold text-primary"><i class="fas fa-calendar-alt me-1"></i>กำหนดปีการศึกษาและภาคเรียน</div><small id="academicPeriodHelp" class="text-muted">ผู้ดูแลระบบกำหนดค่ากลางที่ใช้ร่วมกันทุกระบบ</small></div>
+                <div class="col-6 col-md-3"><label class="form-label small fw-bold">ปีการศึกษา</label><input id="globalAcademicYear" class="form-control" inputmode="numeric" maxlength="4"></div>
+                <div class="col-6 col-md-3"><label class="form-label small fw-bold">ภาคเรียน</label><select id="globalSemester" class="form-select"><option value="1">ภาคเรียนที่ 1</option><option value="2">ภาคเรียนที่ 2</option></select></div>
+                <div class="col-12 col-md-2"><button id="academicPeriodSaveButton" class="btn btn-primary w-100 fw-bold" onclick="changeGlobalAcademicPeriod()"><i class="fas fa-save me-1"></i>บันทึกค่ากลาง</button></div>
+              </div>
+            </div>
 
             <!-- ส่วนจัดการรูปภาพครู & นักเรียน -->
             <div class="row g-3 mb-4">
