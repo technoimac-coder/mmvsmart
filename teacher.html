@@ -1594,6 +1594,23 @@
                   <tbody><tr><td colspan="6" class="text-center text-muted py-3">กำลังโหลดกิจกรรม...</td></tr></tbody>
                 </table>
               </div>
+              <hr class="my-4">
+              <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+                <div><b style="color:#6d28d9;"><i class="fas fa-chart-column me-1"></i>รายงานกิจกรรมรายห้อง</b><br><small class="text-muted">คำนวณจากกิจกรรมทั้งหมด เกณฑ์ผ่านต้องเข้าร่วมอย่างน้อย 80%</small></div>
+              </div>
+              <div class="row g-2 align-items-end mb-3">
+                <div class="col-5 col-md-3"><label class="form-label small fw-bold">ชั้น</label><select id="adminActivityReportLevel" class="form-select"><option value="">เลือกชั้น</option><option value="ม.1">ม.1</option><option value="ม.2">ม.2</option><option value="ม.3">ม.3</option><option value="ม.4">ม.4</option><option value="ม.5">ม.5</option><option value="ม.6">ม.6</option></select></div>
+                <div class="col-4 col-md-3"><label class="form-label small fw-bold">ห้อง</label><select id="adminActivityReportRoom" class="form-select"><option value="">เลือกห้อง</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option></select></div>
+                <div class="col-3 col-md-3"><button id="btnLoadAdminActivityReport" type="button" class="btn btn-primary w-100 fw-bold" onclick="loadAdminActivityReport()"><i class="fas fa-search me-1"></i>ดูรายงาน</button></div>
+              </div>
+              <div id="adminActivityReportSummary" class="alert alert-light border py-2 mb-2">เลือกชั้นและห้องเพื่อดูรายงาน</div>
+              <div id="adminActivityReportList" class="mb-3"></div>
+              <div class="table-responsive" style="max-height:420px;">
+                <table class="table table-sm table-bordered table-hover align-middle mb-0" id="adminActivityReportTable">
+                  <thead class="table-light position-sticky top-0"><tr><th class="text-center">เลขที่</th><th>รหัส</th><th>ชื่อ-นามสกุล</th><th class="text-center">เข้าร่วม</th><th class="text-center">ลา</th><th class="text-center">ไม่เข้าร่วม</th><th class="text-center">ยังไม่เช็ก</th><th class="text-center">ร้อยละ</th><th class="text-center">ผล</th></tr></thead>
+                  <tbody><tr><td colspan="9" class="text-center text-muted py-3">ยังไม่ได้โหลดรายงาน</td></tr></tbody>
+                </table>
+              </div>
             </div>
 
             <!-- จัดการรายชื่อนักเรียนเมื่อขึ้นปีการศึกษาใหม่ -->
@@ -4257,6 +4274,54 @@ function loadTeachersForClub() {
         }).withFailureHandler(err => Swal.fire('ดำเนินการไม่สำเร็จ', err.message || 'เกิดข้อผิดพลาด', 'error'))
           .adminSetActivityStatus(id, nextStatus);
       });
+    }
+
+    function loadAdminActivityReport() {
+      const level = document.getElementById('adminActivityReportLevel').value;
+      const room = document.getElementById('adminActivityReportRoom').value;
+      const summary = document.getElementById('adminActivityReportSummary');
+      const activityList = document.getElementById('adminActivityReportList');
+      const tbody = document.querySelector('#adminActivityReportTable tbody');
+      const button = document.getElementById('btnLoadAdminActivityReport');
+      if (!level || !room) {
+        Swal.fire('ข้อมูลไม่ครบ', 'กรุณาเลือกชั้นและห้อง', 'warning');
+        return;
+      }
+      button.disabled = true;
+      button.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>กำลังโหลด';
+      summary.className = 'alert alert-light border py-2 mb-2';
+      summary.textContent = 'กำลังคำนวณรายงานกิจกรรม...';
+      activityList.innerHTML = '';
+      tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-3"><span class="spinner-border spinner-border-sm me-1"></span>กำลังโหลด...</td></tr>';
+      google.script.run.withSuccessHandler(res => {
+        button.disabled = false;
+        button.innerHTML = '<i class="fas fa-search me-1"></i>ดูรายงาน';
+        const activities = res.activities || [];
+        const students = res.students || [];
+        summary.className = 'alert alert-info border py-2 mb-2';
+        summary.innerHTML = `<b>${activityEscape(res.level)}/${activityEscape(res.room)}</b> · กิจกรรมทั้งหมด <b>${Number(res.activityCount || 0)}</b> รายการ · นักเรียน <b>${Number(res.studentCount || 0)}</b> คน · <span class="text-success fw-bold">ผ่าน ${Number(res.passedCount || 0)} คน</span> · <span class="text-danger fw-bold">ไม่ผ่าน ${Number(res.failedCount || 0)} คน</span> · เกณฑ์ผ่าน ${Number(res.passThreshold || 80)}%`;
+        activityList.innerHTML = activities.length
+          ? `<div class="small fw-bold mb-2">รายชื่อกิจกรรมทั้งหมด</div><div class="d-flex flex-wrap gap-1">${activities.map((item, index) => `<span class="badge text-bg-light border text-dark text-wrap text-start">${index + 1}. ${activityEscape(item.name)} (${activityEscape(item.activityDate)})</span>`).join('')}</div>`
+          : '<div class="alert alert-warning py-2 mb-0">ยังไม่มีกิจกรรมสำหรับห้องนี้</div>';
+        if (!students.length) {
+          tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-3">ไม่พบนักเรียนในห้องนี้</td></tr>';
+          return;
+        }
+        tbody.innerHTML = students.map(student => `<tr>
+          <td class="text-center">${activityEscape(student.no)}</td><td>${activityEscape(student.id)}</td><td>${activityEscape(student.name)}</td>
+          <td class="text-center fw-bold text-success">${Number(student.joined || 0)}</td><td class="text-center text-info">${Number(student.leave || 0)}</td>
+          <td class="text-center text-danger">${Number(student.absent || 0)}</td><td class="text-center text-secondary">${Number(student.unchecked || 0)}</td>
+          <td class="text-center fw-bold">${Number(student.percent || 0).toFixed(2)}%</td>
+          <td class="text-center"><span class="badge ${student.passed ? 'bg-success' : 'bg-danger'}">${student.passed ? 'ผ่าน' : 'ไม่ผ่าน'}</span></td>
+        </tr>`).join('');
+      }).withFailureHandler(err => {
+        button.disabled = false;
+        button.innerHTML = '<i class="fas fa-search me-1"></i>ดูรายงาน';
+        summary.className = 'alert alert-danger py-2 mb-2';
+        summary.textContent = err.message || 'โหลดรายงานไม่สำเร็จ';
+        activityList.innerHTML = '';
+        tbody.innerHTML = '<tr><td colspan="9" class="text-center text-danger py-3">โหลดรายงานไม่สำเร็จ</td></tr>';
+      }).adminGetActivityReport(level, room);
     }
 
     let activityPermissions = {isAdmin:false, advisoryRoom:'', headLevel:''};

@@ -114,6 +114,9 @@ function routeAction($action, $args, $pdo) {
         case 'adminSetActivityStatus':
             return adminSetActivityStatus($args[0], $args[1], $pdo);
 
+        case 'adminGetActivityReport':
+            return adminGetActivityReport($args[0], $args[1], $pdo);
+
         case 'getActivitiesForTeacher':
             return getActivitiesForTeacher($args[0] ?? '', $pdo);
 
@@ -996,6 +999,84 @@ function adminSetActivityStatus($activityId, $status, $pdo) {
         if (!(int)$exists->fetchColumn()) throw new RuntimeException('ไม่พบกิจกรรมที่เลือก');
     }
     return ['success' => true, 'message' => $status === 'open' ? 'เปิดกิจกรรมเรียบร้อยแล้ว' : 'ปิดกิจกรรมเรียบร้อยแล้ว'];
+}
+
+function adminGetActivityReport($level, $room, $pdo) {
+    requireAdminSession();
+    ensureActivitySchema($pdo);
+    [$level, $room] = validateActivityTarget($level, $room);
+    if ($level === '' || $room === '') throw new InvalidArgumentException('กรุณาเลือกชั้นและห้อง');
+
+    $activityStmt = $pdo->prepare("SELECT id, name, activity_date activityDate,
+            target_level targetLevel, target_room targetRoom
+        FROM activities
+        WHERE (target_level IS NULL OR target_level = '') OR target_level = ?
+        ORDER BY activity_date ASC, id ASC");
+    $activityStmt->execute([$level]);
+    $activities = array_values(array_filter($activityStmt->fetchAll(PDO::FETCH_ASSOC), function ($activity) use ($level, $room) {
+        return activityAllowsClass([
+            'target_level' => $activity['targetLevel'] ?? '',
+            'target_room' => $activity['targetRoom'] ?? ''
+        ], $level, $room);
+    }));
+
+    $studentStmt = $pdo->prepare("SELECT no, student_id id, name
+        FROM students WHERE is_active = 1 AND level = ? AND room = ?
+        ORDER BY CAST(no AS UNSIGNED), name");
+    $studentStmt->execute([$level, $room]);
+    $students = $studentStmt->fetchAll(PDO::FETCH_ASSOC);
+    $totals = [];
+    foreach ($students as $student) {
+        $totals[(string)$student['id']] = ['joined' => 0, 'leave' => 0, 'absent' => 0, 'checked' => 0];
+    }
+
+    if ($activities && $students) {
+        $activityIds = array_map(function ($activity) { return (int)$activity['id']; }, $activities);
+        $placeholders = implode(',', array_fill(0, count($activityIds), '?'));
+        $attendanceStmt = $pdo->prepare("SELECT student_id, status, COUNT(*) total
+            FROM activity_attendance
+            WHERE level = ? AND room = ? AND activity_id IN ($placeholders)
+            GROUP BY student_id, status");
+        $attendanceStmt->execute(array_merge([$level, $room], $activityIds));
+        foreach ($attendanceStmt->fetchAll(PDO::FETCH_ASSOC) as $record) {
+            $studentId = (string)$record['student_id'];
+            if (!isset($totals[$studentId])) continue;
+            $count = (int)$record['total'];
+            $totals[$studentId]['checked'] += $count;
+            if ($record['status'] === 'เข้าร่วม') $totals[$studentId]['joined'] += $count;
+            elseif ($record['status'] === 'ลา (มีใบรับรองแพทย์)') $totals[$studentId]['leave'] += $count;
+            elseif ($record['status'] === 'ไม่เข้าร่วมกิจกรรม') $totals[$studentId]['absent'] += $count;
+        }
+    }
+
+    $activityCount = count($activities);
+    $passedCount = 0;
+    $reportStudents = [];
+    foreach ($students as $student) {
+        $counts = $totals[(string)$student['id']];
+        $percent = $activityCount > 0 ? round(($counts['joined'] * 100) / $activityCount, 2) : 0;
+        $passed = $activityCount > 0 && $percent >= 80;
+        if ($passed) $passedCount++;
+        $reportStudents[] = [
+            'no' => $student['no'], 'id' => $student['id'], 'name' => $student['name'],
+            'joined' => $counts['joined'], 'leave' => $counts['leave'], 'absent' => $counts['absent'],
+            'unchecked' => max(0, $activityCount - $counts['checked']),
+            'percent' => $percent, 'passed' => $passed
+        ];
+    }
+
+    return [
+        'success' => true,
+        'level' => $level,
+        'room' => $room,
+        'passThreshold' => 80,
+        'activityCount' => $activityCount,
+        'studentCount' => count($reportStudents),
+        'passedCount' => $passedCount,
+        'failedCount' => count($reportStudents) - $passedCount,
+        'activities' => $activities,
+        'students' => $reportStudents
+    ];
 }
 
 function getActivitiesForTeacher($teacherName, $pdo) {
