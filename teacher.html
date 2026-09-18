@@ -898,15 +898,13 @@
               <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
                 <div>
                   <h6 class="fw-bold mb-1" style="color:#6d28d9;">📋 เช็คชื่อกิจกรรม</h6>
-                  <small class="text-muted">เลือกกิจกรรมและห้องที่ได้รับสิทธิ์ รายการนี้แยกจากการเช็กชื่อเข้าเรียนประจำวัน</small>
+                  <small class="text-muted">เลือกกิจกรรมและห้องที่ได้รับสิทธิ์ ระบบใช้รอบข้อมูลที่ผู้ดูแลกำหนดให้อัตโนมัติ</small>
                 </div>
                 <button class="btn btn-sm btn-outline-secondary" onclick="loadTeacherActivities()"><i class="fas fa-sync-alt me-1"></i>รีเฟรช</button>
               </div>
               <div id="activityPermissionNotice" class="alert alert-light border py-2 small mb-3">กำลังตรวจสอบสิทธิ์...</div>
-              <div class="row g-2 mb-2">
-                <div class="col-6 col-lg-3"><label class="form-label small fw-bold">ปีการศึกษา</label><input id="activityAcademicYear" class="form-control" inputmode="numeric" maxlength="4" placeholder="2569" onchange="loadTeacherActivities()"></div>
-                <div class="col-6 col-lg-3"><label class="form-label small fw-bold">ภาคเรียน</label><select id="activitySemester" class="form-select" onchange="loadTeacherActivities()"><option value="1">ภาคเรียนที่ 1</option><option value="2">ภาคเรียนที่ 2</option></select></div>
-              </div>
+              <input type="hidden" id="activityAcademicYear">
+              <input type="hidden" id="activitySemester">
               <div class="row g-2 align-items-end">
                 <div class="col-12 col-lg-5">
                   <label class="form-label small fw-bold">กิจกรรม</label>
