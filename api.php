@@ -101,6 +101,24 @@ function routeAction($action, $args, $pdo) {
 
         case 'adminUpdateTeacherAssignment':
             return adminUpdateTeacherAssignment($args[0], $args[1] ?? '', $args[2] ?? '', $pdo);
+
+        case 'adminCreateActivity':
+            return adminCreateActivity($args[0] ?? [], $pdo);
+
+        case 'adminListActivities':
+            return adminListActivities($pdo);
+
+        case 'adminSetActivityStatus':
+            return adminSetActivityStatus($args[0], $args[1], $pdo);
+
+        case 'getActivitiesForTeacher':
+            return getActivitiesForTeacher($args[0] ?? '', $pdo);
+
+        case 'getActivityStudents':
+            return getActivityStudents($args[0], $args[1], $args[2], $args[3] ?? '', $pdo);
+
+        case 'saveActivityAttendance':
+            return saveActivityAttendance($args[0], $args[1], $args[2], $args[3] ?? [], $args[4] ?? '', $pdo);
             
         case 'adminUpdateSingleStudentAvatar':
             return adminUpdateSingleStudentAvatar($args[0], $args[1], $pdo);
@@ -742,6 +760,290 @@ function ensureAcademicYearSchema($pdo) {
     $indexStmt->execute([$dbName]);
     if ((int)$indexStmt->fetchColumn() === 0) {
         $pdo->exec("CREATE INDEX idx_students_active_class ON students (is_active, level, room, no)");
+    }
+}
+
+function ensureActivitySchema($pdo) {
+    $pdo->exec("CREATE TABLE IF NOT EXISTS activities (
+        id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(150) NOT NULL,
+        description VARCHAR(500) NULL,
+        activity_date DATE NOT NULL,
+        start_time TIME NULL,
+        target_level VARCHAR(10) NULL,
+        target_room VARCHAR(10) NULL,
+        status ENUM('open','closed') NOT NULL DEFAULT 'open',
+        created_by VARCHAR(255) NOT NULL,
+        created_at DATETIME NOT NULL,
+        updated_at DATETIME NOT NULL,
+        KEY idx_activity_date_status (activity_date, status),
+        KEY idx_activity_target (target_level, target_room)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+    $pdo->exec("CREATE TABLE IF NOT EXISTS activity_attendance (
+        activity_id BIGINT UNSIGNED NOT NULL,
+        student_id VARCHAR(100) NOT NULL,
+        student_name VARCHAR(255) NOT NULL,
+        level VARCHAR(30) NOT NULL,
+        room VARCHAR(30) NOT NULL,
+        status VARCHAR(30) NOT NULL,
+        note VARCHAR(255) NULL,
+        teacher_name VARCHAR(255) NOT NULL,
+        checked_at DATETIME NOT NULL,
+        PRIMARY KEY (activity_id, student_id),
+        KEY idx_activity_attendance_class (activity_id, level, room),
+        KEY idx_activity_attendance_student (student_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+}
+
+function requireTeacherSession($requestedTeacherName = '') {
+    if (empty($_SESSION['username']) || empty($_SESSION['teacher_name'])) {
+        throw new RuntimeException('เซสชันหมดอายุ กรุณาออกจากระบบแล้วเข้าสู่ระบบใหม่');
+    }
+    $sessionTeacher = trim((string)$_SESSION['teacher_name']);
+    $requestedTeacherName = trim((string)$requestedTeacherName);
+    if ($requestedTeacherName !== '' && $requestedTeacherName !== $sessionTeacher) {
+        throw new RuntimeException('ข้อมูลผู้ใช้งานไม่ตรงกับเซสชัน กรุณาเข้าสู่ระบบใหม่');
+    }
+    return $sessionTeacher;
+}
+
+function getCurrentTeacherPermissions($pdo) {
+    if (empty($_SESSION['username'])) throw new RuntimeException('เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่');
+    $stmt = $pdo->prepare("SELECT username, advisory_room, head_level FROM users WHERE username = ? LIMIT 1");
+    $stmt->execute([trim((string)$_SESSION['username'])]);
+    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$user) throw new RuntimeException('ไม่พบข้อมูลสิทธิ์ของครู');
+    $user['is_admin'] = !empty($_SESSION['is_admin']);
+    return $user;
+}
+
+function canCurrentTeacherAccess($level, $room, $pdo) {
+    $user = getCurrentTeacherPermissions($pdo);
+    if (!empty($user['is_admin'])) return true;
+    if (trim((string)($user['head_level'] ?? '')) === $level) return true;
+    return trim((string)($user['advisory_room'] ?? '')) === $level . '/' . $room;
+}
+
+function validateActivityTarget($level, $room) {
+    $level = trim((string)$level);
+    $room = trim((string)$room);
+    if ($level !== '' && !preg_match('/^ม\.[1-6]$/u', $level)) {
+        throw new InvalidArgumentException('ระดับชั้นกิจกรรมต้องเป็น ม.1 ถึง ม.6');
+    }
+    if ($room !== '' && !preg_match('/^[1-6]$/', $room)) {
+        throw new InvalidArgumentException('ห้องกิจกรรมต้องเป็น 1 ถึง 6');
+    }
+    if ($room !== '' && $level === '') {
+        throw new InvalidArgumentException('กรุณาเลือกระดับชั้นก่อนเลือกห้อง');
+    }
+    return [$level, $room];
+}
+
+function validateActivityId($activityId) {
+    $activityId = filter_var($activityId, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+    if ($activityId === false) throw new InvalidArgumentException('รหัสกิจกรรมไม่ถูกต้อง');
+    return (int)$activityId;
+}
+
+function findActivity($activityId, $pdo) {
+    ensureActivitySchema($pdo);
+    $activityId = validateActivityId($activityId);
+    $stmt = $pdo->prepare("SELECT * FROM activities WHERE id = ?");
+    $stmt->execute([$activityId]);
+    $activity = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$activity) throw new RuntimeException('ไม่พบกิจกรรมที่เลือก');
+    return $activity;
+}
+
+function activityAllowsClass($activity, $level, $room) {
+    $targetLevel = trim((string)($activity['target_level'] ?? ''));
+    $targetRoom = trim((string)($activity['target_room'] ?? ''));
+    if ($targetLevel !== '' && $targetLevel !== $level) return false;
+    if ($targetRoom !== '' && $targetRoom !== $room) return false;
+    return true;
+}
+
+function adminCreateActivity($data, $pdo) {
+    $adminName = requireAdminSession();
+    ensureActivitySchema($pdo);
+    if (!is_array($data)) throw new InvalidArgumentException('ข้อมูลกิจกรรมไม่ถูกต้อง');
+
+    $name = trim((string)($data['name'] ?? ''));
+    $description = trim((string)($data['description'] ?? ''));
+    $date = trim((string)($data['date'] ?? ''));
+    $time = trim((string)($data['time'] ?? ''));
+    [$level, $room] = validateActivityTarget($data['level'] ?? '', $data['room'] ?? '');
+
+    if (mb_strlen($name, 'UTF-8') < 3 || mb_strlen($name, 'UTF-8') > 150 || preg_match('/[<>{}\x00-\x1F]/u', $name)) {
+        throw new InvalidArgumentException('ชื่อกิจกรรมต้องมี 3-150 ตัวอักษรและไม่มีอักขระพิเศษที่ไม่ปลอดภัย');
+    }
+    if (mb_strlen($description, 'UTF-8') > 500 || preg_match('/[<>{}\x00-\x1F]/u', $description)) {
+        throw new InvalidArgumentException('รายละเอียดกิจกรรมไม่ถูกต้องหรือยาวเกิน 500 ตัวอักษร');
+    }
+    $dateParts = explode('-', $date);
+    if (count($dateParts) !== 3 || !checkdate((int)$dateParts[1], (int)$dateParts[2], (int)$dateParts[0])) {
+        throw new InvalidArgumentException('วันที่กิจกรรมไม่ถูกต้อง');
+    }
+    if ($time !== '' && !preg_match('/^(?:[01][0-9]|2[0-3]):[0-5][0-9]$/', $time)) {
+        throw new InvalidArgumentException('เวลากิจกรรมไม่ถูกต้อง');
+    }
+
+    $stmt = $pdo->prepare("INSERT INTO activities
+        (name, description, activity_date, start_time, target_level, target_room, status, created_by, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, 'open', ?, NOW(), NOW())");
+    $stmt->execute([
+        $name,
+        $description !== '' ? $description : null,
+        $date,
+        $time !== '' ? $time . ':00' : null,
+        $level !== '' ? $level : null,
+        $room !== '' ? $room : null,
+        $adminName
+    ]);
+    return ['success' => true, 'message' => 'เพิ่มกิจกรรมเรียบร้อยแล้ว', 'activityId' => (int)$pdo->lastInsertId()];
+}
+
+function adminListActivities($pdo) {
+    requireAdminSession();
+    ensureActivitySchema($pdo);
+    $stmt = $pdo->query("SELECT a.id, a.name, a.description, a.activity_date activityDate,
+        TIME_FORMAT(a.start_time, '%H:%i') startTime, a.target_level targetLevel,
+        a.target_room targetRoom, a.status, a.created_by createdBy, a.created_at createdAt,
+        COUNT(aa.student_id) checkedCount
+        FROM activities a LEFT JOIN activity_attendance aa ON aa.activity_id = a.id
+        GROUP BY a.id ORDER BY a.activity_date DESC, a.id DESC LIMIT 100");
+    return ['success' => true, 'activities' => $stmt->fetchAll(PDO::FETCH_ASSOC)];
+}
+
+function adminSetActivityStatus($activityId, $status, $pdo) {
+    requireAdminSession();
+    ensureActivitySchema($pdo);
+    $activityId = validateActivityId($activityId);
+    $status = trim((string)$status);
+    if (!in_array($status, ['open', 'closed'], true)) throw new InvalidArgumentException('สถานะกิจกรรมไม่ถูกต้อง');
+    $stmt = $pdo->prepare("UPDATE activities SET status = ?, updated_at = NOW() WHERE id = ?");
+    $stmt->execute([$status, $activityId]);
+    if ($stmt->rowCount() < 1) {
+        $exists = $pdo->prepare("SELECT COUNT(*) FROM activities WHERE id = ?");
+        $exists->execute([$activityId]);
+        if (!(int)$exists->fetchColumn()) throw new RuntimeException('ไม่พบกิจกรรมที่เลือก');
+    }
+    return ['success' => true, 'message' => $status === 'open' ? 'เปิดกิจกรรมเรียบร้อยแล้ว' : 'ปิดกิจกรรมเรียบร้อยแล้ว'];
+}
+
+function getActivitiesForTeacher($teacherName, $pdo) {
+    $teacherName = requireTeacherSession($teacherName);
+    ensureActivitySchema($pdo);
+    $user = getCurrentTeacherPermissions($pdo);
+
+    $isAdmin = !empty($user['is_admin']);
+    $advisoryRoom = trim((string)($user['advisory_room'] ?? ''));
+    $headLevel = trim((string)($user['head_level'] ?? ''));
+    $stmt = $pdo->query("SELECT id, name, description, activity_date activityDate,
+        TIME_FORMAT(start_time, '%H:%i') startTime, target_level targetLevel,
+        target_room targetRoom, status FROM activities ORDER BY activity_date DESC, id DESC LIMIT 100");
+    $activities = [];
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $activity) {
+        $targetLevel = trim((string)($activity['targetLevel'] ?? ''));
+        $targetRoom = trim((string)($activity['targetRoom'] ?? ''));
+        $allowed = $isAdmin;
+        if (!$allowed && $headLevel !== '') {
+            $allowed = ($targetLevel === '' || $targetLevel === $headLevel);
+        }
+        if (!$allowed && $advisoryRoom !== '') {
+            [$advLevel, $advRoom] = array_pad(explode('/', $advisoryRoom, 2), 2, '');
+            $allowed = ($targetLevel === '' || $targetLevel === $advLevel)
+                && ($targetRoom === '' || $targetRoom === $advRoom);
+        }
+        if ($allowed) $activities[] = $activity;
+    }
+    return [
+        'success' => true,
+        'activities' => $activities,
+        'permissions' => ['isAdmin' => $isAdmin, 'advisoryRoom' => $advisoryRoom, 'headLevel' => $headLevel]
+    ];
+}
+
+function getActivityStudents($activityId, $level, $room, $teacherName, $pdo) {
+    $teacherName = requireTeacherSession($teacherName);
+    [$level, $room] = validateActivityTarget($level, $room);
+    if ($level === '' || $room === '') throw new InvalidArgumentException('กรุณาเลือกชั้นและห้อง');
+    $activity = findActivity($activityId, $pdo);
+    if (!activityAllowsClass($activity, $level, $room)) throw new RuntimeException('กิจกรรมนี้ไม่ได้กำหนดให้ห้องเรียนที่เลือก');
+    if (!canCurrentTeacherAccess($level, $room, $pdo)) throw new RuntimeException('คุณไม่มีสิทธิ์เข้าถึงห้องเรียนนี้');
+
+    $stmt = $pdo->prepare("SELECT s.no, s.student_id id, s.name, s.avatar,
+        COALESCE(aa.status, '') savedStatus, COALESCE(aa.note, '') note
+        FROM students s LEFT JOIN activity_attendance aa
+          ON aa.activity_id = ? AND aa.student_id = s.student_id
+        WHERE s.is_active = 1 AND s.level = ? AND s.room = ?
+        ORDER BY CAST(s.no AS UNSIGNED), s.name");
+    $stmt->execute([(int)$activity['id'], $level, $room]);
+    return [
+        'success' => true,
+        'activity' => [
+            'id' => (int)$activity['id'], 'name' => $activity['name'], 'description' => $activity['description'],
+            'activityDate' => $activity['activity_date'], 'startTime' => $activity['start_time'], 'status' => $activity['status']
+        ],
+        'students' => $stmt->fetchAll(PDO::FETCH_ASSOC)
+    ];
+}
+
+function saveActivityAttendance($activityId, $level, $room, $records, $teacherName, $pdo) {
+    $teacherName = requireTeacherSession($teacherName);
+    [$level, $room] = validateActivityTarget($level, $room);
+    if ($level === '' || $room === '') throw new InvalidArgumentException('กรุณาเลือกชั้นและห้อง');
+    $activity = findActivity($activityId, $pdo);
+    if (($activity['status'] ?? '') !== 'open') throw new RuntimeException('กิจกรรมนี้ปิดการเช็กชื่อแล้ว');
+    if (!activityAllowsClass($activity, $level, $room)) throw new RuntimeException('กิจกรรมนี้ไม่ได้กำหนดให้ห้องเรียนที่เลือก');
+    if (!canCurrentTeacherAccess($level, $room, $pdo)) throw new RuntimeException('คุณไม่มีสิทธิ์บันทึกข้อมูลห้องเรียนนี้');
+    if (!is_array($records) || count($records) < 1 || count($records) > 500) {
+        throw new InvalidArgumentException('รายการเช็กกิจกรรมไม่ถูกต้อง');
+    }
+
+    $studentStmt = $pdo->prepare("SELECT student_id, name FROM students WHERE is_active = 1 AND level = ? AND room = ?");
+    $studentStmt->execute([$level, $room]);
+    $students = [];
+    foreach ($studentStmt->fetchAll(PDO::FETCH_ASSOC) as $student) {
+        $students[trim($student['student_id'])] = trim($student['name']);
+    }
+    $validStatuses = ['เข้าร่วม', 'ลา (มีใบรับรองแพทย์)', 'ไม่เข้าร่วมกิจกรรม'];
+    $normalized = [];
+    foreach ($records as $record) {
+        if (!is_array($record)) throw new InvalidArgumentException('รูปแบบรายการนักเรียนไม่ถูกต้อง');
+        $studentId = trim((string)($record['id'] ?? ''));
+        $status = trim((string)($record['status'] ?? ''));
+        $note = trim((string)($record['note'] ?? ''));
+        if (!isset($students[$studentId])) throw new RuntimeException('พบรายชื่อนักเรียนที่ไม่อยู่ในห้องที่เลือก');
+        if (!in_array($status, $validStatuses, true)) throw new InvalidArgumentException('กรุณาเลือกสถานะกิจกรรมให้นักเรียนทุกคน');
+        if (mb_strlen($note, 'UTF-8') > 255 || preg_match('/[<>{}\x00-\x1F]/u', $note)) {
+            throw new InvalidArgumentException('หมายเหตุไม่ถูกต้องหรือยาวเกิน 255 ตัวอักษร');
+        }
+        $normalized[$studentId] = ['status' => $status, 'note' => $note];
+    }
+    if (count($normalized) !== count($students)) {
+        throw new InvalidArgumentException('กรุณาบันทึกสถานะนักเรียนให้ครบทั้งห้อง');
+    }
+
+    try {
+        $pdo->beginTransaction();
+        $upsert = $pdo->prepare("INSERT INTO activity_attendance
+            (activity_id, student_id, student_name, level, room, status, note, teacher_name, checked_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
+            ON DUPLICATE KEY UPDATE student_name = VALUES(student_name), level = VALUES(level), room = VALUES(room),
+              status = VALUES(status), note = VALUES(note), teacher_name = VALUES(teacher_name), checked_at = NOW()");
+        foreach ($normalized as $studentId => $item) {
+            $upsert->execute([
+                (int)$activity['id'], $studentId, $students[$studentId], $level, $room,
+                $item['status'], $item['note'] !== '' ? $item['note'] : null, $teacherName
+            ]);
+        }
+        $pdo->commit();
+        return ['success' => true, 'message' => 'บันทึกการเช็กกิจกรรม ' . count($normalized) . ' คนเรียบร้อยแล้ว'];
+    } catch (Exception $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        throw $e;
     }
 }
 
