@@ -1421,6 +1421,18 @@
                 <div class="col-12 col-md-9"><label class="form-label small fw-bold">รายละเอียด (ถ้ามี)</label><input id="adminActivityDescription" class="form-control" maxlength="500" placeholder="สถานที่หรือรายละเอียดเพิ่มเติม"></div>
                 <div class="col-12 col-md-3 d-flex align-items-end"><button id="btnAdminCreateActivity" class="btn w-100 fw-bold text-white" style="background:#7c3aed;" onclick="adminCreateActivity()"><i class="fas fa-plus-circle me-1"></i>เพิ่มกิจกรรม</button></div>
               </div>
+              <div class="border rounded-3 p-3 mb-3" style="background:#faf8ff;border-color:#c4b5fd !important;">
+                <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-2">
+                  <div><b style="color:#6d28d9;"><i class="fas fa-layer-group me-1"></i>เพิ่มกิจกรรมหลายรายการพร้อมกัน</b><br><small class="text-muted">กรอกกิจกรรมทั้งเทอมได้สูงสุด 100 รายการ ทุกกิจกรรมใช้กับทุกระดับและทุกห้อง</small></div>
+                  <button type="button" class="btn btn-sm btn-outline-primary" onclick="addAdminActivityBulkRow()"><i class="fas fa-plus me-1"></i>เพิ่มแถว</button>
+                </div>
+                <div class="row g-2 d-none d-md-flex px-2 mb-1 small fw-bold text-muted"><div class="col-md-3">ชื่อกิจกรรม</div><div class="col-md-2">วันที่</div><div class="col-md-2">เวลา (ถ้ามี)</div><div class="col-md-4">รายละเอียด (ถ้ามี)</div><div class="col-md-1"></div></div>
+                <div id="adminActivityBulkRows"></div>
+                <div class="d-flex flex-wrap gap-2 mt-3">
+                  <button type="button" class="btn btn-outline-secondary" onclick="resetAdminActivityBulkRows()"><i class="fas fa-rotate-left me-1"></i>ล้างรายการ</button>
+                  <button type="button" id="btnAdminSaveActivitiesBulk" class="btn text-white fw-bold flex-grow-1" style="background:#6d28d9;" onclick="saveAdminActivitiesBulk()"><i class="fas fa-save me-1"></i>บันทึกกิจกรรมทั้งหมด</button>
+                </div>
+              </div>
               <div class="table-responsive" style="max-height:360px;">
                 <table class="table table-sm table-bordered table-hover align-middle mb-0" id="adminActivityTable">
                   <thead class="position-sticky top-0" style="background:#ede9fe;"><tr><th>วันที่/เวลา</th><th>กิจกรรม</th><th>กลุ่มเป้าหมาย</th><th class="text-center">เช็กแล้ว</th><th class="text-center">สถานะ</th><th class="text-center">จัดการ</th></tr></thead>
@@ -3168,6 +3180,7 @@
         loadAdminSignatures();
         loadAcademicYearSetup();
         loadAdminActivities();
+        ensureAdminActivityBulkRows();
       }
       
       if(!['admin', 'dashboard', 'volunteer', 'attendance', 'activity', 'clubadmin', 'club'].includes(tab)) {
@@ -4135,6 +4148,95 @@ function loadTeachersForClub() {
       const roomSelect = document.getElementById('adminActivityRoom');
       roomSelect.disabled = !hasLevel;
       if (!hasLevel) roomSelect.value = '';
+    }
+
+    function ensureAdminActivityBulkRows() {
+      const container = document.getElementById('adminActivityBulkRows');
+      if (container && !container.children.length) resetAdminActivityBulkRows();
+    }
+
+    function addAdminActivityBulkRow() {
+      const container = document.getElementById('adminActivityBulkRows');
+      if (!container) return;
+      if (container.children.length >= 100) {
+        Swal.fire('ครบจำนวนแล้ว', 'เพิ่มได้สูงสุด 100 กิจกรรมต่อครั้ง', 'warning');
+        return;
+      }
+      const row = document.createElement('div');
+      row.className = 'row g-2 align-items-end border-bottom py-2 admin-activity-bulk-row';
+      row.innerHTML = `<div class="col-12 col-md-3"><label class="d-md-none small fw-bold">ชื่อกิจกรรม</label><input class="form-control bulk-activity-name" maxlength="150" placeholder="ชื่อกิจกรรม"></div>
+        <div class="col-6 col-md-2"><label class="d-md-none small fw-bold">วันที่</label><input type="date" class="form-control bulk-activity-date"></div>
+        <div class="col-6 col-md-2"><label class="d-md-none small fw-bold">เวลา</label><input type="time" class="form-control bulk-activity-time"></div>
+        <div class="col-10 col-md-4"><label class="d-md-none small fw-bold">รายละเอียด</label><input class="form-control bulk-activity-description" maxlength="500" placeholder="รายละเอียดหรือสถานที่ (ถ้ามี)"></div>
+        <div class="col-2 col-md-1"><button type="button" class="btn btn-outline-danger w-100" title="ลบแถว" onclick="removeAdminActivityBulkRow(this)"><i class="fas fa-trash"></i></button></div>`;
+      container.appendChild(row);
+      row.querySelector('.bulk-activity-name').focus();
+    }
+
+    function removeAdminActivityBulkRow(button) {
+      const container = document.getElementById('adminActivityBulkRows');
+      const row = button.closest('.admin-activity-bulk-row');
+      if (container.children.length > 1) row.remove();
+      else row.querySelectorAll('input').forEach(input => input.value = '');
+    }
+
+    function resetAdminActivityBulkRows() {
+      const container = document.getElementById('adminActivityBulkRows');
+      if (!container) return;
+      container.innerHTML = '';
+      for (let i = 0; i < 3; i++) addAdminActivityBulkRow();
+      container.querySelector('.bulk-activity-name')?.focus();
+    }
+
+    function saveAdminActivitiesBulk() {
+      const rows = Array.from(document.querySelectorAll('.admin-activity-bulk-row')).map((row, index) => ({
+        row: index + 1,
+        name: row.querySelector('.bulk-activity-name').value.trim(),
+        date: row.querySelector('.bulk-activity-date').value,
+        time: row.querySelector('.bulk-activity-time').value,
+        description: row.querySelector('.bulk-activity-description').value.trim(),
+        level: '', room: ''
+      })).filter(item => item.name || item.date || item.time || item.description);
+      if (!rows.length) {
+        Swal.fire('ยังไม่มีรายการ', 'กรุณากรอกกิจกรรมอย่างน้อย 1 รายการ', 'warning');
+        return;
+      }
+      const incomplete = rows.find(item => !item.name || !item.date);
+      if (incomplete) {
+        Swal.fire('ข้อมูลไม่ครบ', `รายการที่ ${incomplete.row} ต้องมีชื่อกิจกรรมและวันที่`, 'warning');
+        return;
+      }
+      const keys = new Set();
+      const duplicate = rows.find(item => {
+        const key = `${item.name.toLocaleLowerCase('th')}|${item.date}|${item.time}`;
+        if (keys.has(key)) return true;
+        keys.add(key); return false;
+      });
+      if (duplicate) {
+        Swal.fire('พบรายการซ้ำ', `กรุณาตรวจสอบกิจกรรมรายการที่ ${duplicate.row}`, 'warning');
+        return;
+      }
+      Swal.fire({
+        title: `เพิ่มกิจกรรม ${rows.length} รายการ?`,
+        text: 'กิจกรรมทั้งหมดจะเปิดให้ทุกระดับและทุกห้องเช็กชื่อได้',
+        icon: 'question', showCancelButton: true, confirmButtonText: 'บันทึกทั้งหมด', cancelButtonText: 'ตรวจสอบอีกครั้ง'
+      }).then(result => {
+        if (!result.isConfirmed) return;
+        const button = document.getElementById('btnAdminSaveActivitiesBulk');
+        button.disabled = true;
+        button.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>กำลังบันทึก...';
+        google.script.run.withSuccessHandler(res => {
+          button.disabled = false;
+          button.innerHTML = '<i class="fas fa-save me-1"></i>บันทึกกิจกรรมทั้งหมด';
+          resetAdminActivityBulkRows();
+          loadAdminActivities();
+          Swal.fire('สำเร็จ', res.message, 'success');
+        }).withFailureHandler(err => {
+          button.disabled = false;
+          button.innerHTML = '<i class="fas fa-save me-1"></i>บันทึกกิจกรรมทั้งหมด';
+          Swal.fire('บันทึกไม่สำเร็จ', err.message || 'เกิดข้อผิดพลาด', 'error');
+        }).adminCreateActivitiesBulk(rows);
+      });
     }
 
     function adminCreateActivity() {

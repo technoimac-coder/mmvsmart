@@ -105,6 +105,9 @@ function routeAction($action, $args, $pdo) {
         case 'adminCreateActivity':
             return adminCreateActivity($args[0] ?? [], $pdo);
 
+        case 'adminCreateActivitiesBulk':
+            return adminCreateActivitiesBulk($args[0] ?? [], $pdo);
+
         case 'adminListActivities':
             return adminListActivities($pdo);
 
@@ -864,9 +867,7 @@ function activityAllowsClass($activity, $level, $room) {
     return true;
 }
 
-function adminCreateActivity($data, $pdo) {
-    $adminName = requireAdminSession();
-    ensureActivitySchema($pdo);
+function normalizeActivityData($data) {
     if (!is_array($data)) throw new InvalidArgumentException('ข้อมูลกิจกรรมไม่ถูกต้อง');
 
     $name = trim((string)($data['name'] ?? ''));
@@ -889,19 +890,84 @@ function adminCreateActivity($data, $pdo) {
         throw new InvalidArgumentException('เวลากิจกรรมไม่ถูกต้อง');
     }
 
+    return [
+        'name' => $name,
+        'description' => $description !== '' ? $description : null,
+        'date' => $date,
+        'time' => $time !== '' ? $time . ':00' : null,
+        'level' => $level !== '' ? $level : null,
+        'room' => $room !== '' ? $room : null
+    ];
+}
+
+function adminCreateActivity($data, $pdo) {
+    $adminName = requireAdminSession();
+    ensureActivitySchema($pdo);
+    $activity = normalizeActivityData($data);
+
     $stmt = $pdo->prepare("INSERT INTO activities
         (name, description, activity_date, start_time, target_level, target_room, status, created_by, created_at, updated_at)
         VALUES (?, ?, ?, ?, ?, ?, 'open', ?, NOW(), NOW())");
     $stmt->execute([
-        $name,
-        $description !== '' ? $description : null,
-        $date,
-        $time !== '' ? $time . ':00' : null,
-        $level !== '' ? $level : null,
-        $room !== '' ? $room : null,
+        $activity['name'], $activity['description'], $activity['date'], $activity['time'],
+        $activity['level'], $activity['room'],
         $adminName
     ]);
     return ['success' => true, 'message' => 'เพิ่มกิจกรรมเรียบร้อยแล้ว', 'activityId' => (int)$pdo->lastInsertId()];
+}
+
+function adminCreateActivitiesBulk($rows, $pdo) {
+    $adminName = requireAdminSession();
+    ensureActivitySchema($pdo);
+    if (!is_array($rows) || count($rows) < 1 || count($rows) > 100) {
+        throw new InvalidArgumentException('กรุณาระบุกิจกรรม 1-100 รายการต่อครั้ง');
+    }
+
+    $activities = [];
+    $batchKeys = [];
+    foreach ($rows as $index => $row) {
+        try {
+            $activity = normalizeActivityData($row);
+        } catch (Exception $e) {
+            throw new InvalidArgumentException('รายการที่ ' . ($index + 1) . ': ' . $e->getMessage());
+        }
+        $key = mb_strtolower($activity['name'], 'UTF-8') . '|' . $activity['date'] . '|' . ($activity['time'] ?? '');
+        if (isset($batchKeys[$key])) {
+            throw new InvalidArgumentException('รายการที่ ' . ($index + 1) . ' ซ้ำกับรายการก่อนหน้า');
+        }
+        $batchKeys[$key] = true;
+        $activities[] = $activity;
+    }
+
+    $check = $pdo->prepare("SELECT id FROM activities
+        WHERE name = ? AND activity_date = ? AND start_time <=> ? AND target_level IS NULL AND target_room IS NULL LIMIT 1");
+    $insert = $pdo->prepare("INSERT INTO activities
+        (name, description, activity_date, start_time, target_level, target_room, status, created_by, created_at, updated_at)
+        VALUES (?, ?, ?, ?, NULL, NULL, 'open', ?, NOW(), NOW())");
+    $inserted = 0;
+    $skipped = 0;
+    try {
+        $pdo->beginTransaction();
+        foreach ($activities as $activity) {
+            $check->execute([$activity['name'], $activity['date'], $activity['time']]);
+            if ($check->fetchColumn()) {
+                $skipped++;
+                continue;
+            }
+            $insert->execute([$activity['name'], $activity['description'], $activity['date'], $activity['time'], $adminName]);
+            $inserted++;
+        }
+        $pdo->commit();
+    } catch (Exception $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        throw $e;
+    }
+    return [
+        'success' => true,
+        'inserted' => $inserted,
+        'skipped' => $skipped,
+        'message' => 'เพิ่มกิจกรรม ' . $inserted . ' รายการเรียบร้อยแล้ว' . ($skipped ? ' (ข้ามรายการซ้ำ ' . $skipped . ' รายการ)' : '')
+    ];
 }
 
 function adminListActivities($pdo) {
