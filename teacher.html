@@ -758,6 +758,18 @@
                 </div>
               </div>
               <div class="col-6 col-md-4 col-lg-3">
+                <div class="card dash-action-btn bg-white text-center p-3 cursor-pointer h-100" id="quickActivityCheck" onclick="switchTab('activity')">
+                  <div class="mx-auto mb-2 d-flex align-items-center justify-content-center" style="width: 44px; height: 44px; border-radius: 12px; background: #ede9fe; font-size: 1.4rem;">📋</div>
+                  <span class="fw-bold text-dark small">เช็คชื่อกิจกรรม</span>
+                </div>
+              </div>
+              <div class="col-6 col-md-4 col-lg-3">
+                <div class="card dash-action-btn bg-white text-center p-3 cursor-pointer h-100" id="quickActivityReport" onclick="openAdvisorActivityReport()">
+                  <div class="mx-auto mb-2 d-flex align-items-center justify-content-center" style="width: 44px; height: 44px; border-radius: 12px; background: #dbeafe; font-size: 1.4rem;">📊</div>
+                  <span class="fw-bold text-dark small">รายงานกิจกรรม</span>
+                </div>
+              </div>
+              <div class="col-6 col-md-4 col-lg-3">
                 <div class="card dash-action-btn bg-white text-center p-3 cursor-pointer h-100" onclick="switchTab('report')">
                   <div class="mx-auto mb-2 d-flex align-items-center justify-content-center" style="width: 44px; height: 44px; border-radius: 12px; background: #dcfce7; font-size: 1.4rem;">📊</div>
                   <span class="fw-bold text-dark small">รายงานภาพรวม</span>
@@ -895,11 +907,11 @@
                 </div>
                 <div class="col-6 col-lg-2">
                   <label class="form-label small fw-bold">ชั้น</label>
-                  <select id="activityLevel" class="form-select"><option value="">ชั้น</option><option value="ม.1">ม.1</option><option value="ม.2">ม.2</option><option value="ม.3">ม.3</option><option value="ม.4">ม.4</option><option value="ม.5">ม.5</option><option value="ม.6">ม.6</option></select>
+                  <select id="activityLevel" class="form-select" onchange="updateAdvisorActivityReportButton()"><option value="">ชั้น</option><option value="ม.1">ม.1</option><option value="ม.2">ม.2</option><option value="ม.3">ม.3</option><option value="ม.4">ม.4</option><option value="ม.5">ม.5</option><option value="ม.6">ม.6</option></select>
                 </div>
                 <div class="col-6 col-lg-2">
                   <label class="form-label small fw-bold">ห้อง</label>
-                  <select id="activityRoom" class="form-select"><option value="">ห้อง</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option></select>
+                  <select id="activityRoom" class="form-select" onchange="updateAdvisorActivityReportButton()"><option value="">ห้อง</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option></select>
                 </div>
                 <div class="col-12 col-lg-3"><button id="btnLoadActivityStudents" class="btn w-100 fw-bold text-white" style="background:#7c3aed;" onclick="loadActivityStudents()"><i class="fas fa-users me-1"></i>โหลดรายชื่อ</button></div>
               </div>
@@ -908,6 +920,24 @@
             <div id="activitySummary" class="row g-2 mb-3" style="display:none;"></div>
             <div id="activityStudentList"><div class="text-center text-muted py-4">เลือกกิจกรรมและกดโหลดรายชื่อ</div></div>
             <button class="btn w-100 py-3 mt-2 fw-bold text-white shadow-sm rounded-3" style="background:#7c3aed;display:none;" id="saveActivityBtn" onclick="saveActivityCheck()">บันทึกการเช็คกิจกรรม</button>
+
+            <div class="card p-3 shadow-sm border-0 mt-4 mb-3" id="advisorActivityReportCard" style="border-left:5px solid #0d6efd !important;border-radius:16px;">
+              <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+                <div>
+                  <h6 class="fw-bold text-primary mb-1">📊 รายงานกิจกรรมห้องที่ปรึกษา</h6>
+                  <small class="text-muted">เกณฑ์ผ่านต้องเข้าร่วมอย่างน้อย 80% ของกิจกรรมทั้งหมด</small>
+                </div>
+                <button id="btnLoadAdvisorActivityReport" type="button" class="btn btn-primary fw-bold" onclick="loadAdvisorActivityReport()" disabled><i class="fas fa-chart-bar me-1"></i>ดูรายงานห้องนี้</button>
+              </div>
+              <div id="advisorActivityReportSummary" class="alert alert-light border py-2 mb-2">รอข้อมูลสิทธิ์ห้องที่ปรึกษา</div>
+              <div id="advisorActivityReportList" class="mb-3"></div>
+              <div class="table-responsive" style="max-height:480px;">
+                <table class="table table-sm table-bordered table-hover align-middle mb-0" id="advisorActivityReportTable">
+                  <thead class="table-primary position-sticky top-0"><tr><th>เลขที่</th><th>รหัส</th><th>ชื่อ-นามสกุล</th><th>เข้าร่วม</th><th>ลา</th><th>ไม่เข้าร่วม</th><th>ยังไม่เช็ก</th><th>%</th><th>ผล</th></tr></thead>
+                  <tbody><tr><td colspan="9" class="text-center text-muted py-3">กดดูรายงานห้องนี้</td></tr></tbody>
+                </table>
+              </div>
+            </div>
           </div>
 
           <!-- ================= SECTION REPORT ================= -->
@@ -2950,6 +2980,13 @@
       document.getElementById('attendanceWarning').style.display = 'none';
     }
 
+    let activityReportRequested = false;
+
+    function openAdvisorActivityReport() {
+      activityReportRequested = true;
+      switchTab('activity');
+    }
+
     function switchTab(tab) {
       if (window.innerWidth <= 768) {
         const sidebar = document.getElementById('sidebar');
@@ -4345,17 +4382,24 @@ function loadTeachersForClub() {
         if (activityPermissions.isAdmin) {
           notice.className = 'alert alert-success py-2 small mb-3';
           notice.textContent = 'ผู้ดูแลระบบสามารถเลือกชั้นและห้องได้ทั้งหมด';
+        } else if (activityPermissions.advisoryRoom) {
+          notice.className = 'alert alert-warning py-2 small mb-3';
+          notice.textContent = `สิทธิ์ครูที่ปรึกษา: ${activityPermissions.advisoryRoom} (เช็กและดูรายงานได้เฉพาะห้องนี้)`;
         } else if (activityPermissions.headLevel) {
           notice.className = 'alert alert-info py-2 small mb-3';
           notice.textContent = `สิทธิ์หัวหน้าระดับ: ${activityPermissions.headLevel} ทุกห้อง`;
-        } else if (activityPermissions.advisoryRoom) {
-          notice.className = 'alert alert-warning py-2 small mb-3';
-          notice.textContent = `สิทธิ์ครูที่ปรึกษา: ${activityPermissions.advisoryRoom}`;
         } else {
           notice.className = 'alert alert-danger py-2 small mb-3';
           notice.textContent = 'ยังไม่ได้รับสิทธิ์ครูที่ปรึกษาหรือหัวหน้าระดับ';
         }
         configureActivityClassSelectors();
+        if (activityReportRequested) {
+          activityReportRequested = false;
+          setTimeout(() => {
+            document.getElementById('advisorActivityReportCard').scrollIntoView({behavior:'smooth', block:'start'});
+            if (!document.getElementById('btnLoadAdvisorActivityReport').disabled) loadAdvisorActivityReport();
+          }, 100);
+        }
         if (!teacherActivities.length) select.innerHTML = '<option value="">ยังไม่มีกิจกรรมที่เข้าถึงได้</option>';
       }).withFailureHandler(err => {
         select.innerHTML = '<option value="">โหลดกิจกรรมไม่สำเร็จ</option>';
@@ -4367,24 +4411,85 @@ function loadTeachersForClub() {
     function configureActivityClassSelectors() {
       const level = document.getElementById('activityLevel');
       const room = document.getElementById('activityRoom');
+      const reportButton = document.getElementById('btnLoadAdvisorActivityReport');
       level.disabled = false;
       room.disabled = false;
-      if (!activityPermissions.isAdmin && activityPermissions.headLevel) {
-        level.value = activityPermissions.headLevel;
-        level.disabled = true;
-        if (activityPermissions.advisoryRoom?.startsWith(activityPermissions.headLevel + '/')) room.value = activityPermissions.advisoryRoom.split('/')[1];
+      if (activityPermissions.isAdmin && activityPermissions.advisoryRoom && !level.value && !room.value) {
+        const parts = activityPermissions.advisoryRoom.split('/');
+        level.value = parts[0] || '';
+        room.value = parts[1] || '';
       } else if (!activityPermissions.isAdmin && activityPermissions.advisoryRoom) {
         const parts = activityPermissions.advisoryRoom.split('/');
         level.value = parts[0] || '';
         room.value = parts[1] || '';
         level.disabled = true;
         room.disabled = true;
+      } else if (!activityPermissions.isAdmin && activityPermissions.headLevel) {
+        level.value = activityPermissions.headLevel;
+        level.disabled = true;
       } else if (!activityPermissions.isAdmin) {
         level.value = '';
         room.value = '';
         level.disabled = true;
         room.disabled = true;
       }
+      reportButton.disabled = !(level.value && room.value);
+      document.getElementById('advisorActivityReportSummary').textContent = level.value && room.value
+        ? `พร้อมดูรายงานกิจกรรม ${level.value}/${room.value}`
+        : 'กรุณาระบุห้องที่ได้รับสิทธิ์';
+    }
+
+    function updateAdvisorActivityReportButton() {
+      const level = document.getElementById('activityLevel').value;
+      const room = document.getElementById('activityRoom').value;
+      document.getElementById('btnLoadAdvisorActivityReport').disabled = !(level && room);
+      document.getElementById('advisorActivityReportSummary').textContent = level && room
+        ? `พร้อมดูรายงานกิจกรรม ${level}/${room}`
+        : 'กรุณาระบุห้องที่ได้รับสิทธิ์';
+    }
+
+    function loadAdvisorActivityReport() {
+      const level = document.getElementById('activityLevel').value;
+      const room = document.getElementById('activityRoom').value;
+      const summary = document.getElementById('advisorActivityReportSummary');
+      const activityList = document.getElementById('advisorActivityReportList');
+      const tbody = document.querySelector('#advisorActivityReportTable tbody');
+      const button = document.getElementById('btnLoadAdvisorActivityReport');
+      if (!level || !room) {
+        Swal.fire('ยังไม่มีสิทธิ์ห้องเรียน', 'กรุณาให้ผู้ดูแลกำหนดห้องที่ปรึกษาก่อน', 'warning');
+        return;
+      }
+      button.disabled = true;
+      button.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>กำลังโหลด';
+      summary.className = 'alert alert-light border py-2 mb-2';
+      summary.textContent = 'กำลังคำนวณรายงานกิจกรรม...';
+      activityList.innerHTML = '';
+      tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-3"><span class="spinner-border spinner-border-sm me-1"></span>กำลังโหลด...</td></tr>';
+      google.script.run.withSuccessHandler(res => {
+        button.disabled = false;
+        button.innerHTML = '<i class="fas fa-chart-bar me-1"></i>ดูรายงานห้องนี้';
+        const activities = res.activities || [];
+        const students = res.students || [];
+        summary.className = 'alert alert-info border py-2 mb-2';
+        summary.innerHTML = `<b>${activityEscape(res.level)}/${activityEscape(res.room)}</b> · กิจกรรมทั้งหมด <b>${Number(res.activityCount || 0)}</b> รายการ · นักเรียน <b>${Number(res.studentCount || 0)}</b> คน · <span class="text-success fw-bold">ผ่าน ${Number(res.passedCount || 0)} คน</span> · <span class="text-danger fw-bold">ไม่ผ่าน ${Number(res.failedCount || 0)} คน</span> · เกณฑ์ผ่าน ${Number(res.passThreshold || 80)}%`;
+        activityList.innerHTML = activities.length
+          ? `<div class="small fw-bold mb-2">รายชื่อกิจกรรมทั้งหมด</div><div class="d-flex flex-wrap gap-1">${activities.map((item, index) => `<span class="badge text-bg-light border text-dark text-wrap text-start">${index + 1}. ${activityEscape(item.name)} (${activityEscape(item.activityDate)})</span>`).join('')}</div>`
+          : '<div class="alert alert-warning py-2 mb-0">ยังไม่มีกิจกรรมสำหรับห้องนี้</div>';
+        tbody.innerHTML = students.length ? students.map(student => `<tr>
+          <td class="text-center">${activityEscape(student.no)}</td><td>${activityEscape(student.id)}</td><td>${activityEscape(student.name)}</td>
+          <td class="text-center fw-bold text-success">${Number(student.joined || 0)}</td><td class="text-center text-info">${Number(student.leave || 0)}</td>
+          <td class="text-center text-danger">${Number(student.absent || 0)}</td><td class="text-center text-secondary">${Number(student.unchecked || 0)}</td>
+          <td class="text-center fw-bold">${Number(student.percent || 0).toFixed(2)}%</td>
+          <td class="text-center"><span class="badge ${student.passed ? 'bg-success' : 'bg-danger'}">${student.passed ? 'ผ่าน' : 'ไม่ผ่าน'}</span></td>
+        </tr>`).join('') : '<tr><td colspan="9" class="text-center text-muted py-3">ไม่พบนักเรียนในห้องนี้</td></tr>';
+      }).withFailureHandler(err => {
+        button.disabled = false;
+        button.innerHTML = '<i class="fas fa-chart-bar me-1"></i>ดูรายงานห้องนี้';
+        summary.className = 'alert alert-danger py-2 mb-2';
+        summary.textContent = err.message || 'โหลดรายงานไม่สำเร็จ';
+        activityList.innerHTML = '';
+        tbody.innerHTML = '<tr><td colspan="9" class="text-center text-danger py-3">โหลดรายงานไม่สำเร็จ</td></tr>';
+      }).getActivityReportForTeacher(level, room, teacherName);
     }
 
     function activitySelectionChanged() {

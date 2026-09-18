@@ -117,6 +117,9 @@ function routeAction($action, $args, $pdo) {
         case 'adminGetActivityReport':
             return adminGetActivityReport($args[0], $args[1], $pdo);
 
+        case 'getActivityReportForTeacher':
+            return getActivityReportForTeacher($args[0], $args[1], $args[2] ?? '', $pdo);
+
         case 'getActivitiesForTeacher':
             return getActivitiesForTeacher($args[0] ?? '', $pdo);
 
@@ -831,6 +834,18 @@ function canCurrentTeacherAccess($level, $room, $pdo) {
     return trim((string)($user['advisory_room'] ?? '')) === $level . '/' . $room;
 }
 
+function canCurrentTeacherAccessActivityClass($level, $room, $pdo) {
+    $user = getCurrentTeacherPermissions($pdo);
+    if (!empty($user['is_admin'])) return true;
+
+    $advisoryRoom = trim((string)($user['advisory_room'] ?? ''));
+    if ($advisoryRoom !== '') {
+        return $advisoryRoom === $level . '/' . $room;
+    }
+
+    return trim((string)($user['head_level'] ?? '')) === $level;
+}
+
 function validateActivityTarget($level, $room) {
     $level = trim((string)$level);
     $room = trim((string)$room);
@@ -1003,6 +1018,20 @@ function adminSetActivityStatus($activityId, $status, $pdo) {
 
 function adminGetActivityReport($level, $room, $pdo) {
     requireAdminSession();
+    return buildActivityReport($level, $room, $pdo);
+}
+
+function getActivityReportForTeacher($level, $room, $teacherName, $pdo) {
+    requireTeacherSession($teacherName);
+    [$level, $room] = validateActivityTarget($level, $room);
+    if ($level === '' || $room === '') throw new InvalidArgumentException('กรุณาเลือกชั้นและห้อง');
+    if (!canCurrentTeacherAccessActivityClass($level, $room, $pdo)) {
+        throw new RuntimeException('คุณไม่มีสิทธิ์ดูรายงานกิจกรรมของห้องนี้');
+    }
+    return buildActivityReport($level, $room, $pdo);
+}
+
+function buildActivityReport($level, $room, $pdo) {
     ensureActivitySchema($pdo);
     [$level, $room] = validateActivityTarget($level, $room);
     if ($level === '' || $room === '') throw new InvalidArgumentException('กรุณาเลือกชั้นและห้อง');
@@ -1095,13 +1124,12 @@ function getActivitiesForTeacher($teacherName, $pdo) {
         $targetLevel = trim((string)($activity['targetLevel'] ?? ''));
         $targetRoom = trim((string)($activity['targetRoom'] ?? ''));
         $allowed = $isAdmin;
-        if (!$allowed && $headLevel !== '') {
-            $allowed = ($targetLevel === '' || $targetLevel === $headLevel);
-        }
         if (!$allowed && $advisoryRoom !== '') {
             [$advLevel, $advRoom] = array_pad(explode('/', $advisoryRoom, 2), 2, '');
             $allowed = ($targetLevel === '' || $targetLevel === $advLevel)
                 && ($targetRoom === '' || $targetRoom === $advRoom);
+        } elseif (!$allowed && $headLevel !== '') {
+            $allowed = ($targetLevel === '' || $targetLevel === $headLevel);
         }
         if ($allowed) $activities[] = $activity;
     }
@@ -1118,7 +1146,7 @@ function getActivityStudents($activityId, $level, $room, $teacherName, $pdo) {
     if ($level === '' || $room === '') throw new InvalidArgumentException('กรุณาเลือกชั้นและห้อง');
     $activity = findActivity($activityId, $pdo);
     if (!activityAllowsClass($activity, $level, $room)) throw new RuntimeException('กิจกรรมนี้ไม่ได้กำหนดให้ห้องเรียนที่เลือก');
-    if (!canCurrentTeacherAccess($level, $room, $pdo)) throw new RuntimeException('คุณไม่มีสิทธิ์เข้าถึงห้องเรียนนี้');
+    if (!canCurrentTeacherAccessActivityClass($level, $room, $pdo)) throw new RuntimeException('คุณไม่มีสิทธิ์เข้าถึงห้องเรียนนี้');
 
     $stmt = $pdo->prepare("SELECT s.no, s.student_id id, s.name, s.avatar,
         COALESCE(aa.status, '') savedStatus, COALESCE(aa.note, '') note
@@ -1144,7 +1172,7 @@ function saveActivityAttendance($activityId, $level, $room, $records, $teacherNa
     $activity = findActivity($activityId, $pdo);
     if (($activity['status'] ?? '') !== 'open') throw new RuntimeException('กิจกรรมนี้ปิดการเช็กชื่อแล้ว');
     if (!activityAllowsClass($activity, $level, $room)) throw new RuntimeException('กิจกรรมนี้ไม่ได้กำหนดให้ห้องเรียนที่เลือก');
-    if (!canCurrentTeacherAccess($level, $room, $pdo)) throw new RuntimeException('คุณไม่มีสิทธิ์บันทึกข้อมูลห้องเรียนนี้');
+    if (!canCurrentTeacherAccessActivityClass($level, $room, $pdo)) throw new RuntimeException('คุณไม่มีสิทธิ์บันทึกข้อมูลห้องเรียนนี้');
     if (!is_array($records) || count($records) < 1 || count($records) > 500) {
         throw new InvalidArgumentException('รายการเช็กกิจกรรมไม่ถูกต้อง');
     }
