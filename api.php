@@ -156,6 +156,12 @@ function routeAction($action, $args, $pdo) {
         case 'getAcademicYearSetupData':
             return getAcademicYearSetupData($pdo);
 
+        case 'getCurrentAcademicPeriod':
+            return getCurrentAcademicPeriod($pdo);
+
+        case 'adminSetAcademicPeriod':
+            return adminSetAcademicPeriod($args[0] ?? '', $args[1] ?? '', $pdo);
+
         case 'applyAcademicYearImport':
             return applyAcademicYearImport($args[0], $args[1], $args[2] ?? [], $pdo);
 
@@ -717,9 +723,16 @@ function ensureAcademicYearSchema($pdo) {
     $pdo->exec("CREATE TABLE IF NOT EXISTS academic_year_settings (
         id TINYINT UNSIGNED NOT NULL PRIMARY KEY,
         current_year VARCHAR(9) NOT NULL,
+        current_semester TINYINT UNSIGNED NOT NULL DEFAULT 1,
         updated_at DATETIME NOT NULL,
         updated_by VARCHAR(255) NOT NULL
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+    $settingColumn = $pdo->prepare("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'academic_year_settings' AND COLUMN_NAME = ?");
+    $settingColumn->execute([$dbName, 'current_semester']);
+    if ((int)$settingColumn->fetchColumn() === 0) {
+        $pdo->exec("ALTER TABLE academic_year_settings ADD COLUMN current_semester TINYINT UNSIGNED NOT NULL DEFAULT 1 AFTER current_year");
+    }
 
     $pdo->exec("CREATE TABLE IF NOT EXISTS student_roster_archives (
         id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
@@ -1480,11 +1493,42 @@ function currentAcademicYear($pdo) {
     return $year ?: (string)((int)date('Y') + 543);
 }
 
+function currentAcademicPeriod($pdo) {
+    $row = $pdo->query("SELECT current_year, current_semester FROM academic_year_settings WHERE id = 1")->fetch(PDO::FETCH_ASSOC);
+    $fallbackSemester = ((int)date('n') >= 5 && (int)date('n') <= 10) ? 1 : 2;
+    if (!$row) return [(string)((int)date('Y') + 543), $fallbackSemester];
+    $year = validateAcademicYear($row['current_year']);
+    $semester = in_array((string)($row['current_semester'] ?? ''), ['1', '2'], true) ? (int)$row['current_semester'] : $fallbackSemester;
+    return [$year, $semester];
+}
+
+function getCurrentAcademicPeriod($pdo) {
+    [$academicYear, $semester] = currentAcademicPeriod($pdo);
+    return [
+        'success' => true,
+        'academicYear' => $academicYear,
+        'semester' => $semester,
+        'canEdit' => !empty($_SESSION['is_admin']) && !empty($_SESSION['username'])
+    ];
+}
+
+function adminSetAcademicPeriod($academicYear, $semester, $pdo) {
+    $adminName = requireAdminSession();
+    $academicYear = validateAcademicYear($academicYear);
+    if (!in_array((string)$semester, ['1', '2'], true)) throw new InvalidArgumentException('ภาคเรียนต้องเป็น 1 หรือ 2');
+    $semester = (int)$semester;
+    $stmt = $pdo->prepare("INSERT INTO academic_year_settings (id, current_year, current_semester, updated_at, updated_by)
+        VALUES (1, ?, ?, NOW(), ?) ON DUPLICATE KEY UPDATE current_year=VALUES(current_year), current_semester=VALUES(current_semester), updated_at=NOW(), updated_by=VALUES(updated_by)");
+    $stmt->execute([$academicYear, $semester, $adminName]);
+    return ['success' => true, 'academicYear' => $academicYear, 'semester' => $semester, 'message' => "กำหนดปีการศึกษา {$academicYear} ภาคเรียนที่ {$semester} สำหรับทั้งระบบแล้ว"];
+}
+
 function resolveAcademicPeriod($academicYear, $semester, $pdo) {
-    $academicYear = trim((string)$academicYear) !== '' ? validateAcademicYear($academicYear) : currentAcademicYear($pdo);
+    [$currentYear, $currentSemester] = currentAcademicPeriod($pdo);
+    $academicYear = trim((string)$academicYear) !== '' ? validateAcademicYear($academicYear) : $currentYear;
     $semester = in_array((string)$semester, ['1', '2'], true)
         ? (int)$semester
-        : (((int)date('n') >= 5 && (int)date('n') <= 10) ? 1 : 2);
+        : $currentSemester;
     return [$academicYear, $semester];
 }
 

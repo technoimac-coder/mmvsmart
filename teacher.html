@@ -752,10 +752,10 @@
 
             <div class="card border-0 shadow-sm p-3 mb-4" id="globalAcademicPeriodCard" style="border-left:5px solid #0d6efd !important;border-radius:16px;">
               <div class="row g-2 align-items-end">
-                <div class="col-12 col-md-4"><div class="fw-bold text-primary"><i class="fas fa-calendar-alt me-1"></i>รอบข้อมูลที่กำลังใช้งาน</div><small class="text-muted">ใช้ร่วมกันทั้งระบบ: เช็กชื่อ รายงาน คะแนน จิตอาสา ชุมนุม และกิจกรรม</small></div>
-                <div class="col-6 col-md-3"><label class="form-label small fw-bold">ปีการศึกษา</label><input id="globalAcademicYear" class="form-control" inputmode="numeric" maxlength="4" onchange="changeGlobalAcademicPeriod()"></div>
-                <div class="col-6 col-md-3"><label class="form-label small fw-bold">ภาคเรียน</label><select id="globalSemester" class="form-select" onchange="changeGlobalAcademicPeriod()"><option value="1">ภาคเรียนที่ 1</option><option value="2">ภาคเรียนที่ 2</option></select></div>
-                <div class="col-12 col-md-2"><button class="btn btn-primary w-100 fw-bold" onclick="changeGlobalAcademicPeriod()"><i class="fas fa-sync-alt me-1"></i>โหลดรอบนี้</button></div>
+                <div class="col-12 col-md-4"><div class="fw-bold text-primary"><i class="fas fa-calendar-alt me-1"></i>รอบข้อมูลที่กำลังใช้งาน</div><small id="academicPeriodHelp" class="text-muted">กำหนดโดยผู้ดูแลระบบและใช้ร่วมกันทุกระบบ</small></div>
+                <div class="col-6 col-md-3"><label class="form-label small fw-bold">ปีการศึกษา</label><input id="globalAcademicYear" class="form-control" inputmode="numeric" maxlength="4"></div>
+                <div class="col-6 col-md-3"><label class="form-label small fw-bold">ภาคเรียน</label><select id="globalSemester" class="form-select"><option value="1">ภาคเรียนที่ 1</option><option value="2">ภาคเรียนที่ 2</option></select></div>
+                <div class="col-12 col-md-2"><button id="academicPeriodSaveButton" class="btn btn-primary w-100 fw-bold" onclick="changeGlobalAcademicPeriod()"><i class="fas fa-save me-1"></i>บันทึกค่ากลาง</button></div>
               </div>
             </div>
 
@@ -2857,17 +2857,40 @@
       if (badge) badge.textContent = `ปี ${period.academicYear} · เทอม ${period.semester}`;
     }
 
+    function applyAcademicPeriodToUi(period) {
+      const year = String(period.academicYear);
+      const semester = String(period.semester);
+      document.getElementById('globalAcademicYear').value = year;
+      document.getElementById('globalSemester').value = semester;
+      ['activityAcademicYear','adminActivityAcademicYear','adminActivityReportYear'].forEach(id => { const el = document.getElementById(id); if (el) el.value = year; });
+      ['activitySemester','adminActivitySemester','adminActivityReportSemester'].forEach(id => { const el = document.getElementById(id); if (el) el.value = semester; });
+      document.getElementById('globalAcademicYear').readOnly = !isAdminUser;
+      document.getElementById('globalSemester').disabled = !isAdminUser;
+      document.getElementById('academicPeriodSaveButton').style.display = isAdminUser ? '' : 'none';
+      document.getElementById('academicPeriodHelp').textContent = isAdminUser
+        ? 'ผู้ดูแลระบบสามารถกำหนดค่านี้ให้ครูทุกคนได้'
+        : 'กำหนดโดยผู้ดูแลระบบ ครูทั่วไปดูได้อย่างเดียว';
+      const activityYear = document.getElementById('activityAcademicYear');
+      const activitySemester = document.getElementById('activitySemester');
+      if (activityYear) activityYear.readOnly = !isAdminUser;
+      if (activitySemester) activitySemester.disabled = !isAdminUser;
+      updateAcademicPeriodBadge({academicYear: year, semester});
+      localStorage.setItem('makudmuang_academic_period', JSON.stringify({academicYear: year, semester}));
+    }
+
     function initializeGlobalAcademicPeriod() {
       const defaults = defaultAcademicPeriod();
       let saved = {};
       try { saved = JSON.parse(localStorage.getItem('makudmuang_academic_period') || '{}'); } catch (e) {}
       const year = /^\d{4}$/.test(String(saved.academicYear || '')) ? String(saved.academicYear) : defaults.academicYear;
       const semester = ['1','2'].includes(String(saved.semester || '')) ? String(saved.semester) : defaults.semester;
-      document.getElementById('globalAcademicYear').value = year;
-      document.getElementById('globalSemester').value = semester;
-      ['activityAcademicYear','adminActivityAcademicYear','adminActivityReportYear'].forEach(id => { const el = document.getElementById(id); if (el) el.value = year; });
-      ['activitySemester','adminActivitySemester','adminActivityReportSemester'].forEach(id => { const el = document.getElementById(id); if (el) el.value = semester; });
-      updateAcademicPeriodBadge({academicYear: year, semester});
+      applyAcademicPeriodToUi({academicYear: year, semester});
+      google.script.run.withSuccessHandler(res => {
+        if (!res || res.success === false) return;
+        applyAcademicPeriodToUi(res);
+        const activeTab = localStorage.getItem('makudmuang_active_tab') || 'dashboard';
+        switchTab(activeTab);
+      }).getCurrentAcademicPeriod();
       return {academicYear: year, semester};
     }
 
@@ -2876,19 +2899,25 @@
     }
 
     function changeGlobalAcademicPeriod() {
+      if (!isAdminUser) return Swal.fire('ไม่มีสิทธิ์', 'เฉพาะผู้ดูแลระบบเท่านั้นที่กำหนดปีการศึกษาและภาคเรียนได้', 'warning');
       const period = getGlobalAcademicPeriod();
       if (!/^\d{4}$/.test(period.academicYear) || !['1','2'].includes(period.semester)) return Swal.fire('รอบการศึกษาไม่ถูกต้อง', 'กรุณาระบุปี 4 หลักและภาคเรียน 1 หรือ 2', 'warning');
-      localStorage.setItem('makudmuang_academic_period', JSON.stringify(period));
-      updateAcademicPeriodBadge(period);
-      ['activityAcademicYear','adminActivityAcademicYear','adminActivityReportYear'].forEach(id => { const el = document.getElementById(id); if (el) el.value = period.academicYear; });
-      ['activitySemester','adminActivitySemester','adminActivityReportSemester'].forEach(id => { const el = document.getElementById(id); if (el) el.value = period.semester; });
-      const range = academicPeriodDateRange(period.academicYear, period.semester);
-      const startInput = document.getElementById('indvStartDate');
-      const endInput = document.getElementById('indvEndDate');
-      if (startInput) startInput.value = range.start;
-      if (endInput) endInput.value = range.end;
-      const activeTab = localStorage.getItem('makudmuang_active_tab') || 'dashboard';
-      switchTab(activeTab);
+      const button = document.getElementById('academicPeriodSaveButton');
+      button.disabled = true;
+      google.script.run.withFailureHandler(err => {
+        button.disabled = false;
+        Swal.fire('บันทึกไม่สำเร็จ', err.message || 'กรุณาลองใหม่', 'error');
+      }).withSuccessHandler(res => {
+        button.disabled = false;
+        if (!res || res.success === false) return Swal.fire('บันทึกไม่สำเร็จ', res?.message || 'กรุณาลองใหม่', 'error');
+        applyAcademicPeriodToUi(res);
+        const range = academicPeriodDateRange(res.academicYear, res.semester);
+        document.getElementById('indvStartDate').value = range.start;
+        document.getElementById('indvEndDate').value = range.end;
+        Swal.fire('บันทึกแล้ว', res.message, 'success');
+        const activeTab = localStorage.getItem('makudmuang_active_tab') || 'dashboard';
+        switchTab(activeTab);
+      }).adminSetAcademicPeriod(period.academicYear, period.semester);
     }
 
     window.onload = function() {
