@@ -937,10 +937,12 @@ function normalizeActivityData($data, $pdo) {
     if ($time !== '' && !preg_match('/^(?:[01][0-9]|2[0-3]):[0-5][0-9]$/', $time)) {
         throw new InvalidArgumentException('เวลากิจกรรมไม่ถูกต้อง');
     }
-    if ($academicYear === '') $academicYear = currentAcademicYear($pdo);
-    $academicYear = validateAcademicYear($academicYear);
-    if ($semester === '') $semester = ((int)$dateParts[1] >= 5 && (int)$dateParts[1] <= 10) ? '1' : '2';
-    if (!in_array($semester, ['1', '2'], true)) throw new InvalidArgumentException('ภาคเรียนต้องเป็น 1 หรือ 2');
+    // The administrator-selected academic period is authoritative. Do not
+    // accept stale browser values that could create data in another term.
+    [$academicYear, $semester, $periodStart, $periodEnd] = academicPeriodBounds('', '', $pdo);
+    if ($date < substr($periodStart, 0, 10) || $date > substr($periodEnd, 0, 10)) {
+        throw new InvalidArgumentException("วันที่กิจกรรมต้องอยู่ในปีการศึกษา {$academicYear} ภาคเรียนที่ {$semester}");
+    }
 
     return [
         'name' => $name,
@@ -1027,8 +1029,7 @@ function adminCreateActivitiesBulk($rows, $pdo) {
 function adminListActivities($academicYear, $semester, $pdo) {
     requireAdminSession();
     ensureActivitySchema($pdo);
-    $academicYear = trim((string)$academicYear) !== '' ? validateAcademicYear($academicYear) : currentAcademicYear($pdo);
-    $semester = in_array((string)$semester, ['1','2'], true) ? (int)$semester : (((int)date('n') >= 5 && (int)date('n') <= 10) ? 1 : 2);
+    [$academicYear, $semester] = resolveAcademicPeriod($academicYear, $semester, $pdo);
     $stmt = $pdo->prepare("SELECT a.id, a.name, a.description, a.activity_date activityDate, a.academic_year academicYear, a.semester,
         TIME_FORMAT(a.start_time, '%H:%i') startTime, a.target_level targetLevel,
         a.target_room targetRoom, a.status, a.created_by createdBy, a.created_at createdAt,
@@ -1046,12 +1047,13 @@ function adminSetActivityStatus($activityId, $status, $pdo) {
     $activityId = validateActivityId($activityId);
     $status = trim((string)$status);
     if (!in_array($status, ['open', 'closed'], true)) throw new InvalidArgumentException('สถานะกิจกรรมไม่ถูกต้อง');
-    $stmt = $pdo->prepare("UPDATE activities SET status = ?, updated_at = NOW() WHERE id = ?");
-    $stmt->execute([$status, $activityId]);
+    [$academicYear, $semester] = currentAcademicPeriod($pdo);
+    $stmt = $pdo->prepare("UPDATE activities SET status = ?, updated_at = NOW() WHERE id = ? AND academic_year = ? AND semester = ?");
+    $stmt->execute([$status, $activityId, $academicYear, $semester]);
     if ($stmt->rowCount() < 1) {
-        $exists = $pdo->prepare("SELECT COUNT(*) FROM activities WHERE id = ?");
-        $exists->execute([$activityId]);
-        if (!(int)$exists->fetchColumn()) throw new RuntimeException('ไม่พบกิจกรรมที่เลือก');
+        $exists = $pdo->prepare("SELECT COUNT(*) FROM activities WHERE id = ? AND academic_year = ? AND semester = ?");
+        $exists->execute([$activityId, $academicYear, $semester]);
+        if (!(int)$exists->fetchColumn()) throw new RuntimeException('ไม่พบกิจกรรมในภาคเรียนที่เลือก');
     }
     return ['success' => true, 'message' => $status === 'open' ? 'เปิดกิจกรรมเรียบร้อยแล้ว' : 'ปิดกิจกรรมเรียบร้อยแล้ว'];
 }
@@ -1075,8 +1077,7 @@ function buildActivityReport($level, $room, $academicYear, $semester, $pdo) {
     ensureActivitySchema($pdo);
     [$level, $room] = validateActivityTarget($level, $room);
     if ($level === '' || $room === '') throw new InvalidArgumentException('กรุณาเลือกชั้นและห้อง');
-    $academicYear = trim((string)$academicYear) !== '' ? validateAcademicYear($academicYear) : currentAcademicYear($pdo);
-    $semester = in_array((string)$semester, ['1','2'], true) ? (int)$semester : (((int)date('n') >= 5 && (int)date('n') <= 10) ? 1 : 2);
+    [$academicYear, $semester] = resolveAcademicPeriod($academicYear, $semester, $pdo);
 
     $activityStmt = $pdo->prepare("SELECT id, name, activity_date activityDate,
             target_level targetLevel, target_room targetRoom
@@ -1160,8 +1161,7 @@ function getActivitiesForTeacher($teacherName, $academicYear, $semester, $pdo) {
     $isAdmin = !empty($user['is_admin']);
     $advisoryRoom = trim((string)($user['advisory_room'] ?? ''));
     $headLevel = trim((string)($user['head_level'] ?? ''));
-    $academicYear = trim((string)$academicYear) !== '' ? validateAcademicYear($academicYear) : currentAcademicYear($pdo);
-    $semester = in_array((string)$semester, ['1','2'], true) ? (int)$semester : (((int)date('n') >= 5 && (int)date('n') <= 10) ? 1 : 2);
+    [$academicYear, $semester] = resolveAcademicPeriod($academicYear, $semester, $pdo);
     $stmt = $pdo->prepare("SELECT id, name, description, activity_date activityDate, academic_year academicYear, semester,
         TIME_FORMAT(start_time, '%H:%i') startTime, target_level targetLevel,
         target_room targetRoom, status FROM activities WHERE academic_year = ? AND semester = ? ORDER BY activity_date DESC, id DESC LIMIT 100");
@@ -1194,6 +1194,10 @@ function getActivityStudents($activityId, $level, $room, $teacherName, $pdo) {
     [$level, $room] = validateActivityTarget($level, $room);
     if ($level === '' || $room === '') throw new InvalidArgumentException('กรุณาเลือกชั้นและห้อง');
     $activity = findActivity($activityId, $pdo);
+    [$academicYear, $semester] = currentAcademicPeriod($pdo);
+    if ((string)($activity['academic_year'] ?? '') !== $academicYear || (int)($activity['semester'] ?? 0) !== $semester) {
+        throw new RuntimeException('กิจกรรมนี้ไม่ได้อยู่ในภาคเรียนที่เลือก');
+    }
     if (!activityAllowsClass($activity, $level, $room)) throw new RuntimeException('กิจกรรมนี้ไม่ได้กำหนดให้ห้องเรียนที่เลือก');
     if (!canCurrentTeacherAccessActivityClass($level, $room, $pdo)) throw new RuntimeException('คุณไม่มีสิทธิ์เข้าถึงห้องเรียนนี้');
 
@@ -1219,6 +1223,10 @@ function saveActivityAttendance($activityId, $level, $room, $records, $teacherNa
     [$level, $room] = validateActivityTarget($level, $room);
     if ($level === '' || $room === '') throw new InvalidArgumentException('กรุณาเลือกชั้นและห้อง');
     $activity = findActivity($activityId, $pdo);
+    [$academicYear, $semester] = currentAcademicPeriod($pdo);
+    if ((string)($activity['academic_year'] ?? '') !== $academicYear || (int)($activity['semester'] ?? 0) !== $semester) {
+        throw new RuntimeException('กิจกรรมนี้ไม่ได้อยู่ในภาคเรียนที่เลือก');
+    }
     if (($activity['status'] ?? '') !== 'open') throw new RuntimeException('กิจกรรมนี้ปิดการเช็กชื่อแล้ว');
     if (!activityAllowsClass($activity, $level, $room)) throw new RuntimeException('กิจกรรมนี้ไม่ได้กำหนดให้ห้องเรียนที่เลือก');
     if (!canCurrentTeacherAccessActivityClass($level, $room, $pdo)) throw new RuntimeException('คุณไม่มีสิทธิ์บันทึกข้อมูลห้องเรียนนี้');
@@ -1524,12 +1532,9 @@ function adminSetAcademicPeriod($academicYear, $semester, $pdo) {
 }
 
 function resolveAcademicPeriod($academicYear, $semester, $pdo) {
-    [$currentYear, $currentSemester] = currentAcademicPeriod($pdo);
-    $academicYear = trim((string)$academicYear) !== '' ? validateAcademicYear($academicYear) : $currentYear;
-    $semester = in_array((string)$semester, ['1', '2'], true)
-        ? (int)$semester
-        : $currentSemester;
-    return [$academicYear, $semester];
+    // The administrator-selected value is the single source of truth. Client
+    // arguments are ignored so cached pages cannot request a different term.
+    return currentAcademicPeriod($pdo);
 }
 
 function academicPeriodBounds($academicYear, $semester, $pdo) {
@@ -1539,6 +1544,22 @@ function academicPeriodBounds($academicYear, $semester, $pdo) {
         return [$academicYear, $semester, sprintf('%04d-05-01 00:00:00', $gregorianYear), sprintf('%04d-10-31 23:59:59', $gregorianYear)];
     }
     return [$academicYear, $semester, sprintf('%04d-11-01 00:00:00', $gregorianYear), sprintf('%04d-04-30 23:59:59', $gregorianYear + 1)];
+}
+
+function ensureDateInSelectedAcademicPeriod($date, $pdo, $allowEmpty = false) {
+    $date = trim((string)$date);
+    if ($allowEmpty && $date === '') return '';
+    $parts = explode('-', $date);
+    if (count($parts) !== 3 || !checkdate((int)$parts[1], (int)$parts[2], (int)$parts[0])) {
+        throw new InvalidArgumentException('วันที่ไม่ถูกต้อง');
+    }
+    [$academicYear, $semester, $periodStart, $periodEnd] = academicPeriodBounds('', '', $pdo);
+    $startDate = substr($periodStart, 0, 10);
+    $endDate = substr($periodEnd, 0, 10);
+    if ($date < $startDate || $date > $endDate) {
+        throw new InvalidArgumentException("กรุณาเลือกวันที่ในปีการศึกษา {$academicYear} ภาคเรียนที่ {$semester} ({$startDate} ถึง {$endDate})");
+    }
+    return $date;
 }
 
 function archiveCurrentRoster($pdo, $batchId, $year, $adminName) {
@@ -1873,6 +1894,7 @@ function resetNewTermData($tablesArray, $teacherName, $pdo) {
 
 function getStudentsWithAttendance($level, $room, $date, $teacherName, $pdo) {
     if (!canTeacherAccess($teacherName, $level, $room, $pdo)) return [];
+    $date = ensureDateInSelectedAcademicPeriod($date, $pdo, true);
     
     // Get all students in this class
     $stmt = $pdo->prepare("SELECT no, student_id, name, avatar FROM students WHERE is_active = 1 AND level = ? AND room = ? ORDER BY no ASC");
@@ -1908,6 +1930,7 @@ function saveAttendance($records, $level, $room, $date, $teacherName, $pdo) {
     if (empty($records)) {
         throw new Exception("ไม่พบข้อมูลนักเรียน กรุณาลองใหม่อีกครั้ง");
     }
+    $date = ensureDateInSelectedAcademicPeriod($date, $pdo);
     
     $unselected = [];
     $validStatus = ["มาเรียน", "ลากิจ", "ลาป่วย", "มาสาย", "ขาดเรียน"];
@@ -1950,6 +1973,7 @@ function saveAttendance($records, $level, $room, $date, $teacherName, $pdo) {
 }
 
 function getReportData($date, $pdo) {
+    $date = ensureDateInSelectedAcademicPeriod($date, $pdo);
     // Totals by grade and room
     $stmtT = $pdo->query("SELECT level, room, COUNT(*) as c FROM students WHERE is_active = 1 GROUP BY level, room");
     $totalStudents = 0;
@@ -2012,6 +2036,9 @@ function getReportData($date, $pdo) {
 
 function getIndividualSummary($level, $room, $startDate, $endDate, $teacherName, $pdo) {
     if (!canTeacherAccess($teacherName, $level, $room, $pdo)) return [];
+    $startDate = ensureDateInSelectedAcademicPeriod($startDate, $pdo);
+    $endDate = ensureDateInSelectedAcademicPeriod($endDate, $pdo);
+    if ($startDate > $endDate) throw new InvalidArgumentException('วันที่เริ่มต้นต้องไม่เกินวันที่สิ้นสุด');
     
     // Get all students in this class
     $stmt = $pdo->prepare("SELECT no, student_id, name, avatar FROM students WHERE is_active = 1 AND level = ? AND room = ? ORDER BY no ASC");
@@ -2871,6 +2898,7 @@ function getStudentsByClub($clubName, $pdo) {
 }
 
 function saveClubAttendance($clubName, $date, $records, $pdo) {
+    $date = ensureDateInSelectedAcademicPeriod($date, $pdo);
     try {
         $pdo->beginTransaction();
         
@@ -3064,6 +3092,7 @@ function toggleClubStatus($clubKey, $currentStatus, $pdo) {
 }
 
 function saveClubAttendanceWithDate($clubName, $date, $records, $pdo) {
+    $date = ensureDateInSelectedAcademicPeriod($date, $pdo);
     try {
         $pdo->beginTransaction();
         
@@ -3092,6 +3121,7 @@ function saveClubAttendanceWithDate($clubName, $date, $records, $pdo) {
 }
 
 function getStudentsByClubWithAttendance($clubName, $date, $pdo) {
+    $date = ensureDateInSelectedAcademicPeriod($date, $pdo);
     // Get members with roll number joined from students table to avoid missing 'no' column in club_members
     $stmtMem = $pdo->prepare("
         SELECT cm.student_id as id, cm.name, cm.level, cm.room, COALESCE(s.no, 99) as no 
@@ -3425,6 +3455,7 @@ function getDashboardData($academicYear, $semester, $pdo) {
 
 function getFaceArrivalMap($level, $room, $date, $pdo) {
     try {
+        $date = ensureDateInSelectedAcademicPeriod($date, $pdo);
         $stmt = $pdo->prepare("SELECT student_id, datetime, status FROM face_arrivals WHERE date = ? AND level = ? AND room = ?");
         $stmt->execute([$date, $level, $room]);
         

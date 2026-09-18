@@ -2021,6 +2021,7 @@
         const input = document.getElementById(id);
         if (!input.value || input.value === previousDate) input.value = newDate;
       });
+      applyAcademicPeriodDateLimits(getGlobalAcademicPeriod());
 
       const currentTime = new Date();
       document.getElementById('timeInput').value =
@@ -2782,6 +2783,33 @@
         : {start: `${year}-11-01`, end: `${year + 1}-04-30`};
     }
 
+    function applyAcademicPeriodDateLimits(period) {
+      const range = academicPeriodDateRange(period.academicYear, period.semester);
+      const today = currentAutoDate || getLocalDateValue();
+      const defaultDate = today >= range.start && today <= range.end ? today : range.start;
+      ['dateInput', 'clubAttendanceDate'].forEach(id => {
+        const input = document.getElementById(id);
+        if (!input) return;
+        input.min = range.start;
+        input.max = range.end;
+        if (!input.value || input.value < range.start || input.value > range.end) input.value = defaultDate;
+      });
+      const startInput = document.getElementById('indvStartDate');
+      const endInput = document.getElementById('indvEndDate');
+      [startInput, endInput].forEach(input => {
+        if (!input) return;
+        input.min = range.start;
+        input.max = range.end;
+      });
+      if (startInput && (!startInput.value || startInput.value < range.start || startInput.value > range.end)) startInput.value = range.start;
+      if (endInput && (!endInput.value || endInput.value < range.start || endInput.value > range.end)) endInput.value = range.end;
+      document.querySelectorAll('.bulk-activity-date').forEach(input => {
+        input.min = range.start;
+        input.max = range.end;
+        if (input.value && (input.value < range.start || input.value > range.end)) input.value = '';
+      });
+    }
+
     function updateAcademicPeriodBadge(period) {
       const badge = document.getElementById('activeAcademicPeriodBadge');
       if (badge) badge.textContent = `ปี ${period.academicYear} · เทอม ${period.semester}`;
@@ -2800,10 +2828,15 @@
       document.getElementById('academicPeriodHelp').textContent = isAdminUser
         ? 'ผู้ดูแลระบบสามารถกำหนดค่านี้ให้ครูทุกคนได้'
         : 'กำหนดโดยผู้ดูแลระบบ ครูทั่วไปดูได้อย่างเดียว';
-      const activityYear = document.getElementById('activityAcademicYear');
-      const activitySemester = document.getElementById('activitySemester');
-      if (activityYear) activityYear.readOnly = !isAdminUser;
-      if (activitySemester) activitySemester.disabled = !isAdminUser;
+      ['activityAcademicYear','adminActivityAcademicYear','adminActivityReportYear'].forEach(id => {
+        const input = document.getElementById(id);
+        if (input) input.readOnly = true;
+      });
+      ['activitySemester','adminActivitySemester','adminActivityReportSemester'].forEach(id => {
+        const input = document.getElementById(id);
+        if (input) input.disabled = true;
+      });
+      applyAcademicPeriodDateLimits({academicYear: year, semester});
       updateAcademicPeriodBadge({academicYear: year, semester});
       localStorage.setItem('makudmuang_academic_period', JSON.stringify({academicYear: year, semester}));
     }
@@ -4157,6 +4190,13 @@ function loadTeachersForClub() {
         <div class="col-10 col-md-4"><label class="d-md-none small fw-bold">วัน/เดือน/ปี</label><input type="date" class="form-control bulk-activity-date"></div>
         <div class="col-2 col-md-1"><button type="button" class="btn btn-outline-danger w-100" title="ลบแถว" onclick="removeAdminActivityBulkRow(this)"><i class="fas fa-trash"></i></button></div>`;
       container.appendChild(row);
+      const period = getGlobalAcademicPeriod();
+      if (/^\d{4}$/.test(period.academicYear) && ['1','2'].includes(period.semester)) {
+        const range = academicPeriodDateRange(period.academicYear, period.semester);
+        const dateInput = row.querySelector('.bulk-activity-date');
+        dateInput.min = range.start;
+        dateInput.max = range.end;
+      }
       row.querySelector('.bulk-activity-name').focus();
     }
 
@@ -4197,6 +4237,12 @@ function loadTeachersForClub() {
       const incomplete = rows.find(item => !item.name || !item.date);
       if (incomplete) {
         Swal.fire('ข้อมูลไม่ครบ', `รายการที่ ${incomplete.row} ต้องมีชื่อกิจกรรมและวันที่`, 'warning');
+        return;
+      }
+      const range = academicPeriodDateRange(academicYear, semester);
+      const outsidePeriod = rows.find(item => item.date < range.start || item.date > range.end);
+      if (outsidePeriod) {
+        Swal.fire('วันที่อยู่นอกภาคเรียน', `รายการที่ ${outsidePeriod.row} ต้องอยู่ระหว่าง ${range.start} ถึง ${range.end}`, 'warning');
         return;
       }
       const keys = new Set();
