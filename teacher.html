@@ -726,7 +726,10 @@
             <button class="hamburger me-3" onclick="toggleSidebar()">☰</button>
             <h5 class="mb-0 fw-bold text-primary" id="pageTitle">🏠 แดชบอร์ด (หน้าหลัก)</h5>
           </div>
-          <div class="d-none d-md-block text-end"><small class="text-muted fw-bold">Makudmuang Smart Class</small></div>
+          <div class="d-flex align-items-center gap-2">
+            <button id="activeAcademicPeriodBadge" type="button" class="btn btn-sm btn-outline-primary fw-bold" onclick="switchTab('dashboard')" title="เปลี่ยนปีการศึกษาและภาคเรียน">ปีการศึกษา ...</button>
+            <div class="d-none d-lg-block text-end"><small class="text-muted fw-bold">Makudmuang Smart Class</small></div>
+          </div>
         </div>
 
         <div class="container-fluid p-3 p-md-4 mb-5 mb-md-0">
@@ -744,6 +747,15 @@
                   <div class="small text-white-50">Smart Class System</div>
                   <div class="fw-bold text-white">ระบบบันทึกและสรุปเวลาเรียน</div>
                 </div>
+              </div>
+            </div>
+
+            <div class="card border-0 shadow-sm p-3 mb-4" id="globalAcademicPeriodCard" style="border-left:5px solid #0d6efd !important;border-radius:16px;">
+              <div class="row g-2 align-items-end">
+                <div class="col-12 col-md-4"><div class="fw-bold text-primary"><i class="fas fa-calendar-alt me-1"></i>รอบข้อมูลที่กำลังใช้งาน</div><small class="text-muted">ใช้ร่วมกันทั้งระบบ: เช็กชื่อ รายงาน คะแนน จิตอาสา ชุมนุม และกิจกรรม</small></div>
+                <div class="col-6 col-md-3"><label class="form-label small fw-bold">ปีการศึกษา</label><input id="globalAcademicYear" class="form-control" inputmode="numeric" maxlength="4" onchange="changeGlobalAcademicPeriod()"></div>
+                <div class="col-6 col-md-3"><label class="form-label small fw-bold">ภาคเรียน</label><select id="globalSemester" class="form-select" onchange="changeGlobalAcademicPeriod()"><option value="1">ภาคเรียนที่ 1</option><option value="2">ภาคเรียนที่ 2</option></select></div>
+                <div class="col-12 col-md-2"><button class="btn btn-primary w-100 fw-bold" onclick="changeGlobalAcademicPeriod()"><i class="fas fa-sync-alt me-1"></i>โหลดรอบนี้</button></div>
               </div>
             </div>
 
@@ -900,6 +912,10 @@
                 <button class="btn btn-sm btn-outline-secondary" onclick="loadTeacherActivities()"><i class="fas fa-sync-alt me-1"></i>รีเฟรช</button>
               </div>
               <div id="activityPermissionNotice" class="alert alert-light border py-2 small mb-3">กำลังตรวจสอบสิทธิ์...</div>
+              <div class="row g-2 mb-2">
+                <div class="col-6 col-lg-3"><label class="form-label small fw-bold">ปีการศึกษา</label><input id="activityAcademicYear" class="form-control" inputmode="numeric" maxlength="4" placeholder="2569" onchange="loadTeacherActivities()"></div>
+                <div class="col-6 col-lg-3"><label class="form-label small fw-bold">ภาคเรียน</label><select id="activitySemester" class="form-select" onchange="loadTeacherActivities()"><option value="1">ภาคเรียนที่ 1</option><option value="2">ภาคเรียนที่ 2</option></select></div>
+              </div>
               <div class="row g-2 align-items-end">
                 <div class="col-12 col-lg-5">
                   <label class="form-label small fw-bold">กิจกรรม</label>
@@ -1611,6 +1627,10 @@
                   <div><b style="color:#6d28d9;"><i class="fas fa-layer-group me-1"></i>เพิ่มกิจกรรมหลายรายการพร้อมกัน</b><br><small class="text-muted">กรอกกิจกรรมทั้งเทอมได้สูงสุด 100 รายการ ทุกกิจกรรมใช้กับทุกระดับและทุกห้อง</small></div>
                   <button type="button" class="btn btn-sm btn-outline-primary" onclick="addAdminActivityBulkRow()"><i class="fas fa-plus me-1"></i>เพิ่มแถว</button>
                 </div>
+                <div class="row g-2 mb-3">
+                  <div class="col-6 col-md-3"><label class="form-label small fw-bold">ปีการศึกษา</label><input id="adminActivityAcademicYear" class="form-control" inputmode="numeric" maxlength="4" placeholder="2569" onchange="loadAdminActivities()"></div>
+                  <div class="col-6 col-md-3"><label class="form-label small fw-bold">ภาคเรียน</label><select id="adminActivitySemester" class="form-select" onchange="loadAdminActivities()"><option value="1">ภาคเรียนที่ 1</option><option value="2">ภาคเรียนที่ 2</option></select></div>
+                </div>
                 <div class="row g-2 d-none d-md-flex px-2 mb-1 small fw-bold text-muted"><div class="col-md-7">ชื่อกิจกรรม</div><div class="col-md-4">วัน/เดือน/ปี</div><div class="col-md-1"></div></div>
                 <div id="adminActivityBulkRows"></div>
                 <div class="d-flex flex-wrap gap-2 mt-3">
@@ -1629,9 +1649,11 @@
                 <div><b style="color:#6d28d9;"><i class="fas fa-chart-column me-1"></i>รายงานกิจกรรมรายห้อง</b><br><small class="text-muted">คำนวณจากกิจกรรมทั้งหมด เกณฑ์ผ่านต้องเข้าร่วมอย่างน้อย 80%</small></div>
               </div>
               <div class="row g-2 align-items-end mb-3">
-                <div class="col-5 col-md-3"><label class="form-label small fw-bold">ชั้น</label><select id="adminActivityReportLevel" class="form-select"><option value="">เลือกชั้น</option><option value="ม.1">ม.1</option><option value="ม.2">ม.2</option><option value="ม.3">ม.3</option><option value="ม.4">ม.4</option><option value="ม.5">ม.5</option><option value="ม.6">ม.6</option></select></div>
-                <div class="col-4 col-md-3"><label class="form-label small fw-bold">ห้อง</label><select id="adminActivityReportRoom" class="form-select"><option value="">เลือกห้อง</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option></select></div>
-                <div class="col-3 col-md-3"><button id="btnLoadAdminActivityReport" type="button" class="btn btn-primary w-100 fw-bold" onclick="loadAdminActivityReport()"><i class="fas fa-search me-1"></i>ดูรายงาน</button></div>
+                <div class="col-6 col-md-2"><label class="form-label small fw-bold">ปีการศึกษา</label><input id="adminActivityReportYear" class="form-control" inputmode="numeric" maxlength="4" placeholder="2569"></div>
+                <div class="col-6 col-md-2"><label class="form-label small fw-bold">ภาคเรียน</label><select id="adminActivityReportSemester" class="form-select"><option value="1">1</option><option value="2">2</option></select></div>
+                <div class="col-5 col-md-2"><label class="form-label small fw-bold">ชั้น</label><select id="adminActivityReportLevel" class="form-select"><option value="">เลือกชั้น</option><option value="ม.1">ม.1</option><option value="ม.2">ม.2</option><option value="ม.3">ม.3</option><option value="ม.4">ม.4</option><option value="ม.5">ม.5</option><option value="ม.6">ม.6</option></select></div>
+                <div class="col-4 col-md-2"><label class="form-label small fw-bold">ห้อง</label><select id="adminActivityReportRoom" class="form-select"><option value="">เลือกห้อง</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option></select></div>
+                <div class="col-3 col-md-2"><button id="btnLoadAdminActivityReport" type="button" class="btn btn-primary w-100 fw-bold" onclick="loadAdminActivityReport()"><i class="fas fa-search me-1"></i>ดูรายงาน</button></div>
               </div>
               <div id="adminActivityReportSummary" class="alert alert-light border py-2 mb-2">เลือกชั้นและห้องเพื่อดูรายงาน</div>
               <div id="adminActivityReportList" class="mb-3"></div>
@@ -2818,6 +2840,57 @@
     }
     // ==========================================
 
+    function defaultAcademicPeriod() {
+      const now = new Date();
+      return { academicYear: String(now.getFullYear() + 543), semester: (now.getMonth() + 1 >= 5 && now.getMonth() + 1 <= 10) ? '1' : '2' };
+    }
+
+    function academicPeriodDateRange(academicYear, semester) {
+      const year = Number(academicYear) - 543;
+      return String(semester) === '1'
+        ? {start: `${year}-05-01`, end: `${year}-10-31`}
+        : {start: `${year}-11-01`, end: `${year + 1}-04-30`};
+    }
+
+    function updateAcademicPeriodBadge(period) {
+      const badge = document.getElementById('activeAcademicPeriodBadge');
+      if (badge) badge.textContent = `ปี ${period.academicYear} · เทอม ${period.semester}`;
+    }
+
+    function initializeGlobalAcademicPeriod() {
+      const defaults = defaultAcademicPeriod();
+      let saved = {};
+      try { saved = JSON.parse(localStorage.getItem('makudmuang_academic_period') || '{}'); } catch (e) {}
+      const year = /^\d{4}$/.test(String(saved.academicYear || '')) ? String(saved.academicYear) : defaults.academicYear;
+      const semester = ['1','2'].includes(String(saved.semester || '')) ? String(saved.semester) : defaults.semester;
+      document.getElementById('globalAcademicYear').value = year;
+      document.getElementById('globalSemester').value = semester;
+      ['activityAcademicYear','adminActivityAcademicYear','adminActivityReportYear'].forEach(id => { const el = document.getElementById(id); if (el) el.value = year; });
+      ['activitySemester','adminActivitySemester','adminActivityReportSemester'].forEach(id => { const el = document.getElementById(id); if (el) el.value = semester; });
+      updateAcademicPeriodBadge({academicYear: year, semester});
+      return {academicYear: year, semester};
+    }
+
+    function getGlobalAcademicPeriod() {
+      return {academicYear: document.getElementById('globalAcademicYear').value.trim(), semester: document.getElementById('globalSemester').value};
+    }
+
+    function changeGlobalAcademicPeriod() {
+      const period = getGlobalAcademicPeriod();
+      if (!/^\d{4}$/.test(period.academicYear) || !['1','2'].includes(period.semester)) return Swal.fire('รอบการศึกษาไม่ถูกต้อง', 'กรุณาระบุปี 4 หลักและภาคเรียน 1 หรือ 2', 'warning');
+      localStorage.setItem('makudmuang_academic_period', JSON.stringify(period));
+      updateAcademicPeriodBadge(period);
+      ['activityAcademicYear','adminActivityAcademicYear','adminActivityReportYear'].forEach(id => { const el = document.getElementById(id); if (el) el.value = period.academicYear; });
+      ['activitySemester','adminActivitySemester','adminActivityReportSemester'].forEach(id => { const el = document.getElementById(id); if (el) el.value = period.semester; });
+      const range = academicPeriodDateRange(period.academicYear, period.semester);
+      const startInput = document.getElementById('indvStartDate');
+      const endInput = document.getElementById('indvEndDate');
+      if (startInput) startInput.value = range.start;
+      if (endInput) endInput.value = range.end;
+      const activeTab = localStorage.getItem('makudmuang_active_tab') || 'dashboard';
+      switchTab(activeTab);
+    }
+
     window.onload = function() {
       const savedSession = localStorage.getItem('makudmuang_session');
       if(savedSession) {
@@ -2846,6 +2919,7 @@
 
         document.getElementById('loginPage').style.display = 'none';
         document.getElementById('mainApp').style.display = 'block';
+        initializeGlobalAcademicPeriod();
 
         const savedTab = localStorage.getItem('makudmuang_active_tab') || 'dashboard';
         let activeTabToOpen = savedTab;
@@ -2936,7 +3010,8 @@
           document.getElementById('loginPage').style.display = 'none';
           document.getElementById('mainApp').style.display = 'block';
           
-          switchTab('dashboard'); 
+          initializeGlobalAcademicPeriod();
+          switchTab('dashboard');
           btn.innerText = originalText; btn.disabled = false;
           
         } else { 
@@ -3231,6 +3306,7 @@
     }
 
     function loadDashboardData() {
+      const period = getGlobalAcademicPeriod();
       const tbodyVol = document.querySelector('#dashVolunteerTable tbody');
       tbodyVol.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4"><div class="spinner-border spinner-border-sm text-info me-2"></div>กำลังโหลดข้อมูล...</td></tr>';
       
@@ -3249,7 +3325,7 @@
             <td class="text-center small">ครู${item.uploader}</td>
           </tr>
         `).join('');
-      }).getVolunteerGallery(teacherName, isAdminUser, advisoryRoom, 'dashboard');
+      }).getVolunteerGallery(teacherName, isAdminUser, advisoryRoom, 'dashboard', '', '', period.academicYear, period.semester);
 
       const tbodyDeduct = document.querySelector('#dashDeductTable tbody');
       const tbodyReward = document.querySelector('#dashRewardTable tbody');
@@ -3282,7 +3358,7 @@
               <td class="fw-bold text-center ${remainingColor}">${s.remaining}</td>
             </tr>`;
           }).join('');
-        }).getRoomDeductionReport(level, room, teacherName);
+        }).getRoomDeductionReport(level, room, teacherName, period.academicYear, period.semester);
 
         tbodyReward.innerHTML = '<tr><td colspan="3" class="text-center text-muted py-4"><div class="spinner-border spinner-border-sm text-success me-2"></div>กำลังโหลด...</td></tr>';
         google.script.run.withSuccessHandler(res => {
@@ -3297,7 +3373,7 @@
             </td>
             <td class="fw-bold text-center text-success">+${s.total}</td>
           </tr>`).join('');
-        }).getRoomRewardReport(level, room, teacherName);
+        }).getRoomRewardReport(level, room, teacherName, period.academicYear, period.semester);
       }
     }
 
@@ -3425,7 +3501,7 @@
                </div></div></div>`;
         });
         html += '</div>'; galleryDiv.innerHTML = html;
-      }).getVolunteerGallery(teacherName, isAdminUser, advisoryRoom, 'gallery');
+      }).getVolunteerGallery(teacherName, isAdminUser, advisoryRoom, 'gallery', '', '', getGlobalAcademicPeriod().academicYear, getGlobalAcademicPeriod().semester);
     }
 
     function loadAdminVolunteerGallery() {
@@ -3452,7 +3528,7 @@
                </div></div></div>`;
         });
         html += '</div>'; galleryDiv.innerHTML = html;
-      }).getVolunteerGallery(teacherName, isAdminUser, advisoryRoom, 'admin_gallery', level, room);
+      }).getVolunteerGallery(teacherName, isAdminUser, advisoryRoom, 'admin_gallery', level, room, getGlobalAcademicPeriod().academicYear, getGlobalAcademicPeriod().semester);
     }
 
     function confirmResetNewTerm() {
@@ -4222,13 +4298,19 @@ function loadTeachersForClub() {
     }
 
     function saveAdminActivitiesBulk() {
+      const academicYear = document.getElementById('adminActivityAcademicYear').value.trim();
+      const semester = document.getElementById('adminActivitySemester').value;
+      if (!/^\d{4}$/.test(academicYear) || !['1','2'].includes(semester)) {
+        Swal.fire('ข้อมูลรอบเรียนไม่ถูกต้อง', 'กรุณาระบุปีการศึกษา 4 หลักและภาคเรียน', 'warning');
+        return;
+      }
       const rows = Array.from(document.querySelectorAll('.admin-activity-bulk-row')).map((row, index) => ({
         row: index + 1,
         name: row.querySelector('.bulk-activity-name').value.trim(),
         date: row.querySelector('.bulk-activity-date').value,
         time: '',
         description: '',
-        level: '', room: ''
+        level: '', room: '', academicYear, semester
       })).filter(item => item.name || item.date);
       if (!rows.length) {
         Swal.fire('ยังไม่มีรายการ', 'กรุณากรอกกิจกรรมอย่างน้อย 1 รายการ', 'warning');
@@ -4251,7 +4333,7 @@ function loadTeachersForClub() {
       }
       Swal.fire({
         title: `เพิ่มกิจกรรม ${rows.length} รายการ?`,
-        text: 'กิจกรรมทั้งหมดจะเปิดให้ทุกระดับและทุกห้องเช็กชื่อได้',
+        text: `ปีการศึกษา ${academicYear} ภาคเรียนที่ ${semester} · ใช้กับทุกระดับและทุกห้อง`,
         icon: 'question', showCancelButton: true, confirmButtonText: 'บันทึกทั้งหมด', cancelButtonText: 'ตรวจสอบอีกครั้ง'
       }).then(result => {
         if (!result.isConfirmed) return;
@@ -4276,7 +4358,16 @@ function loadTeachersForClub() {
       const tbody = document.querySelector('#adminActivityTable tbody');
       if (!tbody) return;
       tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-3"><span class="spinner-border spinner-border-sm me-1"></span>กำลังโหลดกิจกรรม...</td></tr>';
+      const yearInput = document.getElementById('adminActivityAcademicYear');
+      const semesterInput = document.getElementById('adminActivitySemester');
+      const globalPeriod = getGlobalAcademicPeriod();
+      if (!yearInput.value) yearInput.value = globalPeriod.academicYear;
+      if (!semesterInput.value) semesterInput.value = globalPeriod.semester;
       google.script.run.withSuccessHandler(res => {
+        if (!yearInput.value) yearInput.value = res.academicYear || '';
+        semesterInput.value = String(res.semester || 1);
+        if (!document.getElementById('adminActivityReportYear').value) document.getElementById('adminActivityReportYear').value = res.academicYear || '';
+        document.getElementById('adminActivityReportSemester').value = String(res.semester || 1);
         const rows = res.activities || [];
         if (!rows.length) {
           tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-3">ยังไม่มีกิจกรรม</td></tr>';
@@ -4286,7 +4377,7 @@ function loadTeachersForClub() {
           const target = item.targetLevel ? `${activityEscape(item.targetLevel)}${item.targetRoom ? '/' + activityEscape(item.targetRoom) : ' ทุกห้อง'}` : 'ทั้งโรงเรียน';
           const isOpen = item.status === 'open';
           return `<tr>
-            <td class="text-nowrap"><b>${activityEscape(item.activityDate)}</b>${item.startTime ? `<br><small>${activityEscape(item.startTime)} น.</small>` : ''}</td>
+            <td class="text-nowrap"><b>${activityEscape(item.activityDate)}</b>${item.startTime ? `<br><small>${activityEscape(item.startTime)} น.</small>` : ''}<br><small class="text-primary">ปี ${activityEscape(item.academicYear)} เทอม ${Number(item.semester)}</small></td>
             <td><b>${activityEscape(item.name)}</b>${item.description ? `<br><small class="text-muted">${activityEscape(item.description)}</small>` : ''}</td>
             <td>${target}</td><td class="text-center fw-bold">${Number(item.checkedCount || 0)}</td>
             <td class="text-center"><span class="badge ${isOpen ? 'bg-success' : 'bg-secondary'}">${isOpen ? 'เปิดเช็กชื่อ' : 'ปิดแล้ว'}</span></td>
@@ -4295,7 +4386,7 @@ function loadTeachersForClub() {
         }).join('');
       }).withFailureHandler(err => {
         tbody.innerHTML = `<tr><td colspan="6" class="text-center text-danger py-3">${activityEscape(err.message || 'โหลดกิจกรรมไม่สำเร็จ')}</td></tr>`;
-      }).adminListActivities();
+      }).adminListActivities(yearInput.value.trim(), semesterInput.value);
     }
 
     function adminToggleActivity(id, nextStatus) {
@@ -4316,12 +4407,14 @@ function loadTeachersForClub() {
     function loadAdminActivityReport() {
       const level = document.getElementById('adminActivityReportLevel').value;
       const room = document.getElementById('adminActivityReportRoom').value;
+      const academicYear = document.getElementById('adminActivityReportYear').value.trim();
+      const semester = document.getElementById('adminActivityReportSemester').value;
       const summary = document.getElementById('adminActivityReportSummary');
       const activityList = document.getElementById('adminActivityReportList');
       const tbody = document.querySelector('#adminActivityReportTable tbody');
       const button = document.getElementById('btnLoadAdminActivityReport');
-      if (!level || !room) {
-        Swal.fire('ข้อมูลไม่ครบ', 'กรุณาเลือกชั้นและห้อง', 'warning');
+      if (!level || !room || !/^\d{4}$/.test(academicYear) || !['1','2'].includes(semester)) {
+        Swal.fire('ข้อมูลไม่ครบ', 'กรุณาเลือกปีการศึกษา ภาคเรียน ชั้นและห้อง', 'warning');
         return;
       }
       button.disabled = true;
@@ -4336,7 +4429,7 @@ function loadTeachersForClub() {
         const activities = res.activities || [];
         const students = res.students || [];
         summary.className = 'alert alert-info border py-2 mb-2';
-        summary.innerHTML = `<b>${activityEscape(res.level)}/${activityEscape(res.room)}</b> · กิจกรรมทั้งหมด <b>${Number(res.activityCount || 0)}</b> รายการ · นักเรียน <b>${Number(res.studentCount || 0)}</b> คน · <span class="text-success fw-bold">ผ่าน ${Number(res.passedCount || 0)} คน</span> · <span class="text-danger fw-bold">ไม่ผ่าน ${Number(res.failedCount || 0)} คน</span> · เกณฑ์ผ่าน ${Number(res.passThreshold || 80)}%`;
+        summary.innerHTML = `<b>ปี ${activityEscape(res.academicYear)} ภาคเรียนที่ ${Number(res.semester)}</b> · <b>${activityEscape(res.level)}/${activityEscape(res.room)}</b> · กิจกรรมทั้งหมด <b>${Number(res.activityCount || 0)}</b> รายการ · นักเรียน <b>${Number(res.studentCount || 0)}</b> คน · <span class="text-success fw-bold">ผ่าน ${Number(res.passedCount || 0)} คน</span> · <span class="text-danger fw-bold">ไม่ผ่าน ${Number(res.failedCount || 0)} คน</span> · เกณฑ์ผ่าน ${Number(res.passThreshold || 80)}%`;
         activityList.innerHTML = activities.length
           ? `<div class="small fw-bold mb-2">รายชื่อกิจกรรมทั้งหมด</div><div class="d-flex flex-wrap gap-1">${activities.map((item, index) => `<span class="badge text-bg-light border text-dark text-wrap text-start">${index + 1}. ${activityEscape(item.name)} (${activityEscape(item.activityDate)})</span>`).join('')}</div>`
           : '<div class="alert alert-warning py-2 mb-0">ยังไม่มีกิจกรรมสำหรับห้องนี้</div>';
@@ -4358,7 +4451,7 @@ function loadTeachersForClub() {
         summary.textContent = err.message || 'โหลดรายงานไม่สำเร็จ';
         activityList.innerHTML = '';
         tbody.innerHTML = '<tr><td colspan="9" class="text-center text-danger py-3">โหลดรายงานไม่สำเร็จ</td></tr>';
-      }).adminGetActivityReport(level, room);
+      }).adminGetActivityReport(level, room, academicYear, semester);
     }
 
     let activityPermissions = {isAdmin:false, advisoryRoom:'', headLevel:''};
@@ -4366,12 +4459,24 @@ function loadTeachersForClub() {
     function loadTeacherActivities() {
       const select = document.getElementById('activitySelect');
       const notice = document.getElementById('activityPermissionNotice');
+      const yearInput = document.getElementById('activityAcademicYear');
+      const semesterInput = document.getElementById('activitySemester');
+      const globalPeriod = getGlobalAcademicPeriod();
+      if (!yearInput.value) yearInput.value = globalPeriod.academicYear;
+      if (!semesterInput.value) semesterInput.value = globalPeriod.semester;
+      if (yearInput.value && !/^\d{4}$/.test(yearInput.value.trim())) {
+        notice.className = 'alert alert-danger py-2 small mb-3';
+        notice.textContent = 'ปีการศึกษาต้องเป็นตัวเลข 4 หลัก';
+        return;
+      }
       select.innerHTML = '<option value="">กำลังโหลดกิจกรรม...</option>';
       document.getElementById('activityStudentList').innerHTML = '<div class="text-center text-muted py-4">เลือกกิจกรรมและกดโหลดรายชื่อ</div>';
       document.getElementById('saveActivityBtn').style.display = 'none';
       google.script.run.withSuccessHandler(res => {
         teacherActivities = res.activities || [];
         activityPermissions = res.permissions || activityPermissions;
+        yearInput.value = res.academicYear || yearInput.value;
+        semesterInput.value = String(res.semester || semesterInput.value || 1);
         select.innerHTML = '<option value="">-- เลือกกิจกรรม --</option>';
         teacherActivities.forEach(item => {
           const option = document.createElement('option');
@@ -4405,7 +4510,7 @@ function loadTeachersForClub() {
         select.innerHTML = '<option value="">โหลดกิจกรรมไม่สำเร็จ</option>';
         notice.className = 'alert alert-danger py-2 small mb-3';
         notice.textContent = err.message || 'กรุณาเข้าสู่ระบบใหม่';
-      }).getActivitiesForTeacher(teacherName);
+      }).getActivitiesForTeacher(teacherName, yearInput.value.trim(), semesterInput.value);
     }
 
     function configureActivityClassSelectors() {
@@ -4442,7 +4547,9 @@ function loadTeachersForClub() {
     function updateAdvisorActivityReportButton() {
       const level = document.getElementById('activityLevel').value;
       const room = document.getElementById('activityRoom').value;
-      document.getElementById('btnLoadAdvisorActivityReport').disabled = !(level && room);
+      const academicYear = document.getElementById('activityAcademicYear').value.trim();
+      const semester = document.getElementById('activitySemester').value;
+      document.getElementById('btnLoadAdvisorActivityReport').disabled = !(level && room && /^\d{4}$/.test(academicYear) && ['1','2'].includes(semester));
       document.getElementById('advisorActivityReportSummary').textContent = level && room
         ? `พร้อมดูรายงานกิจกรรม ${level}/${room}`
         : 'กรุณาระบุห้องที่ได้รับสิทธิ์';
@@ -4451,11 +4558,13 @@ function loadTeachersForClub() {
     function loadAdvisorActivityReport() {
       const level = document.getElementById('activityLevel').value;
       const room = document.getElementById('activityRoom').value;
+      const academicYear = document.getElementById('activityAcademicYear').value.trim();
+      const semester = document.getElementById('activitySemester').value;
       const summary = document.getElementById('advisorActivityReportSummary');
       const activityList = document.getElementById('advisorActivityReportList');
       const tbody = document.querySelector('#advisorActivityReportTable tbody');
       const button = document.getElementById('btnLoadAdvisorActivityReport');
-      if (!level || !room) {
+      if (!level || !room || !/^\d{4}$/.test(academicYear) || !['1','2'].includes(semester)) {
         Swal.fire('ยังไม่มีสิทธิ์ห้องเรียน', 'กรุณาให้ผู้ดูแลกำหนดห้องที่ปรึกษาก่อน', 'warning');
         return;
       }
@@ -4471,7 +4580,7 @@ function loadTeachersForClub() {
         const activities = res.activities || [];
         const students = res.students || [];
         summary.className = 'alert alert-info border py-2 mb-2';
-        summary.innerHTML = `<b>${activityEscape(res.level)}/${activityEscape(res.room)}</b> · กิจกรรมทั้งหมด <b>${Number(res.activityCount || 0)}</b> รายการ · นักเรียน <b>${Number(res.studentCount || 0)}</b> คน · <span class="text-success fw-bold">ผ่าน ${Number(res.passedCount || 0)} คน</span> · <span class="text-danger fw-bold">ไม่ผ่าน ${Number(res.failedCount || 0)} คน</span> · เกณฑ์ผ่าน ${Number(res.passThreshold || 80)}%`;
+        summary.innerHTML = `<b>ปี ${activityEscape(res.academicYear)} ภาคเรียนที่ ${Number(res.semester)}</b> · <b>${activityEscape(res.level)}/${activityEscape(res.room)}</b> · กิจกรรมทั้งหมด <b>${Number(res.activityCount || 0)}</b> รายการ · นักเรียน <b>${Number(res.studentCount || 0)}</b> คน · <span class="text-success fw-bold">ผ่าน ${Number(res.passedCount || 0)} คน</span> · <span class="text-danger fw-bold">ไม่ผ่าน ${Number(res.failedCount || 0)} คน</span> · เกณฑ์ผ่าน ${Number(res.passThreshold || 80)}%`;
         activityList.innerHTML = activities.length
           ? `<div class="small fw-bold mb-2">รายชื่อกิจกรรมทั้งหมด</div><div class="d-flex flex-wrap gap-1">${activities.map((item, index) => `<span class="badge text-bg-light border text-dark text-wrap text-start">${index + 1}. ${activityEscape(item.name)} (${activityEscape(item.activityDate)})</span>`).join('')}</div>`
           : '<div class="alert alert-warning py-2 mb-0">ยังไม่มีกิจกรรมสำหรับห้องนี้</div>';
@@ -4489,7 +4598,7 @@ function loadTeachersForClub() {
         summary.textContent = err.message || 'โหลดรายงานไม่สำเร็จ';
         activityList.innerHTML = '';
         tbody.innerHTML = '<tr><td colspan="9" class="text-center text-danger py-3">โหลดรายงานไม่สำเร็จ</td></tr>';
-      }).getActivityReportForTeacher(level, room, teacherName);
+      }).getActivityReportForTeacher(level, room, academicYear, semester, teacherName);
     }
 
     function activitySelectionChanged() {
@@ -4926,11 +5035,11 @@ function loadTeachersForClub() {
       google.script.run.withSuccessHandler(res => {
         if(!res || res.length === 0) { tbody.innerHTML = '<tr><td colspan="4" class="text-center text-danger py-3">ไม่พบข้อมูล หรือคุณไม่มีสิทธิ์ในห้องนี้</td></tr>'; document.getElementById('btnDownloadDeductPDF').disabled = true; } 
         else { document.getElementById('btnDownloadDeductPDF').disabled = false; tbody.innerHTML = res.map(s => { let remainingColor = s.remaining < 50 ? 'text-danger' : 'text-success'; return `<tr><td class="text-center">${s.no}</td><td style="text-align:left; font-size:0.85rem; white-space:nowrap;">${s.name}</td><td class="text-danger fw-bold text-center">-${s.deducted}</td><td class="fw-bold text-center ${remainingColor}">${s.remaining}</td></tr>`; }).join(''); }
-      }).getRoomDeductionReport(level, room, teacherName);
+      }).getRoomDeductionReport(level, room, teacherName, getGlobalAcademicPeriod().academicYear, getGlobalAcademicPeriod().semester);
     }
-    function downloadDeductPDF() { const level = document.getElementById('reportDeductLevel').value, room = document.getElementById('reportDeductRoom').value; if (!level || !room) { Swal.fire('แจ้งเตือน', 'กรุณาเลือกชั้นและห้องก่อนครับ', 'warning'); return; } const btn = document.getElementById('btnDownloadDeductPDF'); btn.innerText = "กำลังสร้างPDF..."; btn.disabled = true; google.script.run.withSuccessHandler(res => { btn.innerText = "📄โหลดรายงาน PDF"; btn.disabled = false; if(res.error) { Swal.fire('ผิดพลาด', res.error, 'error'); return; } if (res.pdfBase64) { const link = document.createElement('a'); link.href = "data:application/pdf;base64," + res.pdfBase64; link.download = res.filename; document.body.appendChild(link); link.click(); document.body.removeChild(link); } }).generateDeductPDF(level, room, teacherName); }
+    function downloadDeductPDF() { const level = document.getElementById('reportDeductLevel').value, room = document.getElementById('reportDeductRoom').value; if (!level || !room) { Swal.fire('แจ้งเตือน', 'กรุณาเลือกชั้นและห้องก่อนครับ', 'warning'); return; } const btn = document.getElementById('btnDownloadDeductPDF'); btn.innerText = "กำลังสร้างPDF..."; btn.disabled = true; google.script.run.withSuccessHandler(res => { btn.innerText = "📄โหลดรายงาน PDF"; btn.disabled = false; if(res.error) { Swal.fire('ผิดพลาด', res.error, 'error'); return; } if (res.pdfBase64) { const link = document.createElement('a'); link.href = "data:application/pdf;base64," + res.pdfBase64; link.download = res.filename; document.body.appendChild(link); link.click(); document.body.removeChild(link); } }).generateDeductPDF(level, room, teacherName, getGlobalAcademicPeriod().academicYear, getGlobalAcademicPeriod().semester); }
 
-    function downloadRewardPDF() { const level = document.getElementById('reportRewardLevel').value, room = document.getElementById('reportRewardRoom').value; if (!level || !room) { Swal.fire('แจ้งเตือน', 'กรุณาเลือกชั้นและห้องก่อนครับ', 'warning'); return; } const btn = document.getElementById('btnDownloadRewardPDF'); btn.innerText = "กำลังสร้างPDF..."; btn.disabled = true; google.script.run.withSuccessHandler(res => { btn.innerText = "📄โหลดรายงาน PDF"; btn.disabled = false; if(res.error) { Swal.fire('ผิดพลาด', res.error, 'error'); return; } if(res.pdfBase64) { if (res.pdfBase64) { const link = document.createElement('a'); link.href = "data:application/pdf;base64," + res.pdfBase64; link.download = res.filename; document.body.appendChild(link); link.click(); document.body.removeChild(link); } } }).generateRewardPDF(level, room, teacherName); }
+    function downloadRewardPDF() { const level = document.getElementById('reportRewardLevel').value, room = document.getElementById('reportRewardRoom').value; if (!level || !room) { Swal.fire('แจ้งเตือน', 'กรุณาเลือกชั้นและห้องก่อนครับ', 'warning'); return; } const btn = document.getElementById('btnDownloadRewardPDF'); btn.innerText = "กำลังสร้างPDF..."; btn.disabled = true; google.script.run.withSuccessHandler(res => { btn.innerText = "📄โหลดรายงาน PDF"; btn.disabled = false; if(res.error) { Swal.fire('ผิดพลาด', res.error, 'error'); return; } if(res.pdfBase64) { if (res.pdfBase64) { const link = document.createElement('a'); link.href = "data:application/pdf;base64," + res.pdfBase64; link.download = res.filename; document.body.appendChild(link); link.click(); document.body.removeChild(link); } } }).generateRewardPDF(level, room, teacherName, getGlobalAcademicPeriod().academicYear, getGlobalAcademicPeriod().semester); }
 
     function searchStudentReward() {
       const searchVal = document.getElementById('searchStuIdReward').value.trim(), nameBox = document.getElementById('rewardStudentName'), hiddenId = document.getElementById('hiddenStuIdReward'), hiddenName = document.getElementById('hiddenStuNameReward'), hiddenLevel = document.getElementById('hiddenStuLevelReward'), hiddenRoom = document.getElementById('hiddenStuRoomReward');
@@ -4958,28 +5067,28 @@ function loadTeachersForClub() {
       google.script.run.withSuccessHandler(res => {
         if(!res || res.length === 0) { tbody.innerHTML = '<tr><td colspan="3" class="text-center text-danger py-3">ไม่พบข้อมูล หรือคุณไม่มีสิทธิ์ในห้องนี้</td></tr>'; document.getElementById('btnDownloadRewardPDF').disabled = true; } 
         else { document.getElementById('btnDownloadRewardPDF').disabled = false; tbody.innerHTML = res.map(s => { return `<tr><td class="text-center">${s.no}</td><td style="text-align:left; font-size:0.85rem; white-space:nowrap;">${s.name}</td><td class="fw-bold text-center text-success">+${s.total}</td></tr>`; }).join(''); }
-      }).getRoomRewardReport(level, room, teacherName);
+      }).getRoomRewardReport(level, room, teacherName, getGlobalAcademicPeriod().academicYear, getGlobalAcademicPeriod().semester);
     }
     function fetchAllRewardsRanked() {
       const tbody = document.querySelector('#tableTopRewards tbody'); tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">กำลังดึงข้อมูล...</td></tr>';
       google.script.run.withSuccessHandler(res => {
         if(!res || res.length === 0) { tbody.innerHTML = '<tr><td colspan="4" class="text-center text-danger py-3">ยังไม่มีข้อมูลการบันทึกคะแนน</td></tr>'; } 
         else { tbody.innerHTML = res.map((s, index) => { return `<tr><td class="text-center fw-bold text-secondary">#${index + 1}</td><td style="text-align:left; font-size:0.85rem; white-space:nowrap;">${s.name}</td><td class="text-center">${s.class}</td><td class="fw-bold text-center text-success">${s.total}</td></tr>`; }).join(''); }
-      }).getAllRewardsRanked();
+      }).getAllRewardsRanked(getGlobalAcademicPeriod().academicYear, getGlobalAcademicPeriod().semester);
     }
     function loadMyDeductions() {
       const tbody = document.querySelector('#tableMyDeductions tbody'); tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">กำลังดึงข้อมูล...</td></tr>';
       google.script.run.withSuccessHandler(res => {
         if(!res || res.length === 0) { tbody.innerHTML = '<tr><td colspan="4" class="text-center text-danger py-3">ยังไม่มีประวัติการทำรายการของคุณ</td></tr>'; }
         else { tbody.innerHTML = res.map(log => `<tr><td style="font-size:0.75rem;">${log.datetime}</td><td style="text-align:left; font-size:0.85rem; white-space:nowrap;">${log.stuName}</td><td style="text-align:left; font-size:0.85rem;">${log.reason}</td><td class="text-danger fw-bold text-center">-${log.points}</td></tr>`).join(''); }
-      }).getMyLogs('Deductions', teacherName);
+      }).getMyLogs('Deductions', teacherName, getGlobalAcademicPeriod().academicYear, getGlobalAcademicPeriod().semester);
     }
     function loadMyRewards() {
       const tbody = document.querySelector('#tableMyRewards tbody'); tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">กำลังดึงข้อมูล...</td></tr>';
       google.script.run.withSuccessHandler(res => {
         if(!res || res.length === 0) { tbody.innerHTML = '<tr><td colspan="4" class="text-center text-danger py-3">ยังไม่มีประวัติการทำรายการของคุณ</td></tr>'; }
         else { tbody.innerHTML = res.map(log => `<tr><td style="font-size:0.75rem;">${log.datetime}</td><td style="text-align:left; font-size:0.85rem; white-space:nowrap;">${log.stuName}</td><td style="text-align:left; font-size:0.85rem;">${log.reason}</td><td class="text-success fw-bold text-center">+${log.points}</td></tr>`).join(''); }
-      }).getMyLogs('Rewards', teacherName);
+      }).getMyLogs('Rewards', teacherName, getGlobalAcademicPeriod().academicYear, getGlobalAcademicPeriod().semester);
     }
 
     function toggleAdminLogView() {
@@ -4995,7 +5104,7 @@ function loadTeachersForClub() {
         else { tDeduct.innerHTML = res.deductions.map(log => `<tr><td style="font-size:0.75rem;">${log.date}</td><td style="font-size:0.85rem; text-align:left;">${log.stuName}<br><small class="text-muted">${log.classInfo}</small></td><td style="font-size:0.85rem; text-align:left;">${log.reason}</td><td class="text-danger fw-bold text-center">-${log.points}</td><td style="font-size:0.85rem; text-align:center;">ครู${log.teacher}</td></tr>`).join(''); }
         if(!res.rewards || res.rewards.length === 0) { tReward.innerHTML = '<tr><td colspan="5" class="text-center text-danger py-3">ยังไม่มีประวัติการบวกคะแนน</td></tr>'; } 
         else { tReward.innerHTML = res.rewards.map(log => `<tr><td style="font-size:0.75rem;">${log.date}</td><td style="font-size:0.85rem; text-align:left;">${log.stuName}<br><small class="text-muted">${log.classInfo}</small></td><td style="font-size:0.85rem; text-align:left;">${log.reason}</td><td class="text-success fw-bold text-center">+${log.points}</td><td style="font-size:0.85rem; text-align:center;">ครู${log.teacher}</td></tr>`).join(''); }
-      }).getAdminLogs();
+      }).getAdminLogs(getGlobalAcademicPeriod().academicYear, getGlobalAcademicPeriod().semester);
     }
     
     function viewStudentHistory(stuId, stuName, type) {
@@ -5032,7 +5141,7 @@ function loadTeachersForClub() {
           }
         }
         document.getElementById('historyModalBody').innerHTML = html;
-      }).getStudentHistoryForTeacher(stuId);
+      }).getStudentHistoryForTeacher(stuId, getGlobalAcademicPeriod().academicYear, getGlobalAcademicPeriod().semester);
     }
 
     // ==========================================
@@ -5526,7 +5635,7 @@ function loadTeachersForClub() {
 
         summaryDiv.style.display = 'flex';
         document.getElementById('btnExportClubPdf').style.display = 'inline-block';
-      }).getClubAttendanceReport(clubName);
+      }).getClubAttendanceReport(clubName, getGlobalAcademicPeriod().academicYear, getGlobalAcademicPeriod().semester);
     }
 
     // 7. พิมพ์รายงาน PDF ชุมนุม
@@ -5551,7 +5660,7 @@ function loadTeachersForClub() {
             link.click();
             document.body.removeChild(link);
           }
-        }).generateClubReportPDF(clubName);
+        }).generateClubReportPDF(clubName, getGlobalAcademicPeriod().academicYear, getGlobalAcademicPeriod().semester);
       }
     }
     function showTeacherList(inputEle) {

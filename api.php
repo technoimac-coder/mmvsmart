@@ -109,19 +109,19 @@ function routeAction($action, $args, $pdo) {
             return adminCreateActivitiesBulk($args[0] ?? [], $pdo);
 
         case 'adminListActivities':
-            return adminListActivities($pdo);
+            return adminListActivities($args[0] ?? '', $args[1] ?? '', $pdo);
 
         case 'adminSetActivityStatus':
             return adminSetActivityStatus($args[0], $args[1], $pdo);
 
         case 'adminGetActivityReport':
-            return adminGetActivityReport($args[0], $args[1], $pdo);
+            return adminGetActivityReport($args[0], $args[1], $args[2] ?? '', $args[3] ?? '', $pdo);
 
         case 'getActivityReportForTeacher':
-            return getActivityReportForTeacher($args[0], $args[1], $args[2] ?? '', $pdo);
+            return getActivityReportForTeacher($args[0], $args[1], $args[2] ?? '', $args[3] ?? '', $args[4] ?? '', $pdo);
 
         case 'getActivitiesForTeacher':
-            return getActivitiesForTeacher($args[0] ?? '', $pdo);
+            return getActivitiesForTeacher($args[0] ?? '', $args[1] ?? '', $args[2] ?? '', $pdo);
 
         case 'getActivityStudents':
             return getActivityStudents($args[0], $args[1], $args[2], $args[3] ?? '', $pdo);
@@ -166,7 +166,7 @@ function routeAction($action, $args, $pdo) {
             return restoreAcademicYearBackup($args[0], $pdo);
             
         case 'getAdminLogs':
-            return getAdminLogs($pdo);
+            return getAdminLogs($args[0] ?? '', $args[1] ?? '', $pdo);
             
         case 'resetNewTermData':
             return resetNewTermData($args[0], $args[1] ?? '', $pdo);
@@ -175,7 +175,7 @@ function routeAction($action, $args, $pdo) {
             return uploadGroupVolunteerPhoto($args[0], $args[1], $args[2], $args[3], $args[4], $args[5], $pdo);
             
         case 'getVolunteerGallery':
-            return getVolunteerGallery($args[0], $args[1], $args[2], $args[3], $args[4] ?? '', $args[5] ?? '', $pdo);
+            return getVolunteerGallery($args[0], $args[1], $args[2], $args[3], $args[4] ?? '', $args[5] ?? '', $args[6] ?? '', $args[7] ?? '', $pdo);
             
         case 'getFaceArrivalMap':
             return getFaceArrivalMap($args[0], $args[1], $args[2], $pdo);
@@ -202,7 +202,7 @@ function routeAction($action, $args, $pdo) {
             return saveMultipleDeductions($args[0], $args[1], $args[2], $args[3], $args[4], $pdo);
             
         case 'getRoomDeductionReport':
-            return getRoomDeductionReport($args[0], $args[1], $args[2], $pdo);
+            return getRoomDeductionReport($args[0], $args[1], $args[2], $args[3] ?? '', $args[4] ?? '', $pdo);
             
         case 'generatePDFFromHtml':
             return ['success' => true, 'html' => $args[0], 'filename' => $args[1] . '.pdf'];
@@ -220,25 +220,25 @@ function routeAction($action, $args, $pdo) {
             return generateIndividualPDF($args[0], $args[1], $args[2], $args[3], $args[4], $pdo);
             
         case 'generateDeductPDF':
-            return generateDeductPDF($args[0], $args[1], $args[2], $pdo);
+            return generateDeductPDF($args[0], $args[1], $args[2], $args[3] ?? '', $args[4] ?? '', $pdo);
             
         case 'getMyLogs':
-            return getMyLogs($args[0], $args[1], $pdo);
+            return getMyLogs($args[0], $args[1], $args[2] ?? '', $args[3] ?? '', $pdo);
             
         case 'generateRewardPDF':
-            return generateRewardPDF($args[0], $args[1], $args[2], $pdo);
+            return generateRewardPDF($args[0], $args[1], $args[2], $args[3] ?? '', $args[4] ?? '', $pdo);
             
         case 'saveReward':
             return saveReward($args[0], $args[1], $args[2], $args[3], $args[4], $args[5], $args[6], $args[7], $pdo);
             
         case 'getRoomRewardReport':
-            return getRoomRewardReport($args[0], $args[1], $args[2], $pdo);
+            return getRoomRewardReport($args[0], $args[1], $args[2], $args[3] ?? '', $args[4] ?? '', $pdo);
             
         case 'getAllRewardsRanked':
-            return getAllRewardsRanked($pdo);
+            return getAllRewardsRanked($args[0] ?? '', $args[1] ?? '', $pdo);
             
         case 'getStudentHistoryForTeacher':
-            return getStudentHistoryForTeacher($args[0], $pdo);
+            return getStudentHistoryForTeacher($args[0], $args[1] ?? '', $args[2] ?? '', $pdo);
             
         case 'getTeachersForClub':
             return getTeachersForClub($pdo);
@@ -274,7 +274,7 @@ function routeAction($action, $args, $pdo) {
             return saveClubAttendance($args[0], $args[1], $args[2], $pdo);
             
         case 'getClubAttendanceReport':
-            return getClubAttendanceReport($args[0], $pdo);
+            return getClubAttendanceReport($args[0], $args[1] ?? '', $args[2] ?? '', $pdo);
             
         case 'getStudentsWithoutClub':
             return getStudentsWithoutClub($pdo);
@@ -326,7 +326,7 @@ function routeAction($action, $args, $pdo) {
             return addMultipleStudentsToClub($args[0], $args[1], $pdo);
             
         case 'generateClubReportPDF':
-            return generateClubReportPDF($args[0], $pdo);
+            return generateClubReportPDF($args[0], $args[1] ?? '', $args[2] ?? '', $pdo);
             
         case 'generateNoClubReportPDF':
             return generateNoClubReportPDF($pdo);
@@ -338,7 +338,7 @@ function routeAction($action, $args, $pdo) {
             return generateAdminRoomClubsPDF($args[0], $args[1], $pdo);
             
         case 'getDashboardData':
-            return getDashboardData($pdo);
+            return getDashboardData($args[0] ?? '', $args[1] ?? '', $pdo);
             
         case 'getFaceArrivalMap':
             return getFaceArrivalMap($args[0], $args[1], $args[2], $pdo);
@@ -641,7 +641,7 @@ function bulkUploadTeacherAvatars($filesArray, $pdo) {
     }
 }
 
-function adminAddUser($user, $pass, $name, $advisoryRoom, $headLevel, $avatarBase64 = null, $pdo) {
+function adminAddUser($user, $pass, $name, $advisoryRoom, $headLevel, $avatarBase64, $pdo) {
     try {
         $avatarUrl = null;
         if (!empty($avatarBase64)) {
@@ -789,6 +789,21 @@ function ensureActivitySchema($pdo) {
         KEY idx_activity_target (target_level, target_room)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
+    $dbName = $pdo->query("SELECT DATABASE()")->fetchColumn();
+    $columnStmt = $pdo->prepare("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'activities' AND COLUMN_NAME = ?");
+    $columnStmt->execute([$dbName, 'academic_year']);
+    if ((int)$columnStmt->fetchColumn() === 0) $pdo->exec("ALTER TABLE activities ADD COLUMN academic_year VARCHAR(4) NULL AFTER activity_date");
+    $columnStmt->execute([$dbName, 'semester']);
+    if ((int)$columnStmt->fetchColumn() === 0) $pdo->exec("ALTER TABLE activities ADD COLUMN semester TINYINT UNSIGNED NULL AFTER academic_year");
+
+    $defaultYear = currentAcademicYear($pdo);
+    $backfill = $pdo->prepare("UPDATE activities SET academic_year = ?, semester = CASE WHEN MONTH(activity_date) BETWEEN 5 AND 10 THEN 1 ELSE 2 END WHERE academic_year IS NULL OR academic_year = '' OR semester IS NULL");
+    $backfill->execute([$defaultYear]);
+
+    $indexStmt = $pdo->prepare("SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'activities' AND INDEX_NAME = 'idx_activity_period'");
+    $indexStmt->execute([$dbName]);
+    if ((int)$indexStmt->fetchColumn() === 0) $pdo->exec("CREATE INDEX idx_activity_period ON activities (academic_year, semester, activity_date)");
+
     $pdo->exec("CREATE TABLE IF NOT EXISTS activity_attendance (
         activity_id BIGINT UNSIGNED NOT NULL,
         student_id VARCHAR(100) NOT NULL,
@@ -885,13 +900,15 @@ function activityAllowsClass($activity, $level, $room) {
     return true;
 }
 
-function normalizeActivityData($data) {
+function normalizeActivityData($data, $pdo) {
     if (!is_array($data)) throw new InvalidArgumentException('ข้อมูลกิจกรรมไม่ถูกต้อง');
 
     $name = trim((string)($data['name'] ?? ''));
     $description = trim((string)($data['description'] ?? ''));
     $date = trim((string)($data['date'] ?? ''));
     $time = trim((string)($data['time'] ?? ''));
+    $academicYear = trim((string)($data['academicYear'] ?? ''));
+    $semester = trim((string)($data['semester'] ?? ''));
     [$level, $room] = validateActivityTarget($data['level'] ?? '', $data['room'] ?? '');
 
     if (mb_strlen($name, 'UTF-8') < 3 || mb_strlen($name, 'UTF-8') > 150 || preg_match('/[<>{}\x00-\x1F]/u', $name)) {
@@ -907,11 +924,17 @@ function normalizeActivityData($data) {
     if ($time !== '' && !preg_match('/^(?:[01][0-9]|2[0-3]):[0-5][0-9]$/', $time)) {
         throw new InvalidArgumentException('เวลากิจกรรมไม่ถูกต้อง');
     }
+    if ($academicYear === '') $academicYear = currentAcademicYear($pdo);
+    $academicYear = validateAcademicYear($academicYear);
+    if ($semester === '') $semester = ((int)$dateParts[1] >= 5 && (int)$dateParts[1] <= 10) ? '1' : '2';
+    if (!in_array($semester, ['1', '2'], true)) throw new InvalidArgumentException('ภาคเรียนต้องเป็น 1 หรือ 2');
 
     return [
         'name' => $name,
         'description' => $description !== '' ? $description : null,
         'date' => $date,
+        'academicYear' => $academicYear,
+        'semester' => (int)$semester,
         'time' => $time !== '' ? $time . ':00' : null,
         'level' => $level !== '' ? $level : null,
         'room' => $room !== '' ? $room : null
@@ -921,13 +944,13 @@ function normalizeActivityData($data) {
 function adminCreateActivity($data, $pdo) {
     $adminName = requireAdminSession();
     ensureActivitySchema($pdo);
-    $activity = normalizeActivityData($data);
+    $activity = normalizeActivityData($data, $pdo);
 
     $stmt = $pdo->prepare("INSERT INTO activities
-        (name, description, activity_date, start_time, target_level, target_room, status, created_by, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, 'open', ?, NOW(), NOW())");
+        (name, description, activity_date, academic_year, semester, start_time, target_level, target_room, status, created_by, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'open', ?, NOW(), NOW())");
     $stmt->execute([
-        $activity['name'], $activity['description'], $activity['date'], $activity['time'],
+        $activity['name'], $activity['description'], $activity['date'], $activity['academicYear'], $activity['semester'], $activity['time'],
         $activity['level'], $activity['room'],
         $adminName
     ]);
@@ -945,7 +968,7 @@ function adminCreateActivitiesBulk($rows, $pdo) {
     $batchKeys = [];
     foreach ($rows as $index => $row) {
         try {
-            $activity = normalizeActivityData($row);
+            $activity = normalizeActivityData($row, $pdo);
         } catch (Exception $e) {
             throw new InvalidArgumentException('รายการที่ ' . ($index + 1) . ': ' . $e->getMessage());
         }
@@ -958,21 +981,21 @@ function adminCreateActivitiesBulk($rows, $pdo) {
     }
 
     $check = $pdo->prepare("SELECT id FROM activities
-        WHERE name = ? AND activity_date = ? AND start_time <=> ? AND target_level IS NULL AND target_room IS NULL LIMIT 1");
+        WHERE name = ? AND activity_date = ? AND academic_year = ? AND semester = ? AND start_time <=> ? AND target_level IS NULL AND target_room IS NULL LIMIT 1");
     $insert = $pdo->prepare("INSERT INTO activities
-        (name, description, activity_date, start_time, target_level, target_room, status, created_by, created_at, updated_at)
-        VALUES (?, ?, ?, ?, NULL, NULL, 'open', ?, NOW(), NOW())");
+        (name, description, activity_date, academic_year, semester, start_time, target_level, target_room, status, created_by, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, NULL, NULL, 'open', ?, NOW(), NOW())");
     $inserted = 0;
     $skipped = 0;
     try {
         $pdo->beginTransaction();
         foreach ($activities as $activity) {
-            $check->execute([$activity['name'], $activity['date'], $activity['time']]);
+            $check->execute([$activity['name'], $activity['date'], $activity['academicYear'], $activity['semester'], $activity['time']]);
             if ($check->fetchColumn()) {
                 $skipped++;
                 continue;
             }
-            $insert->execute([$activity['name'], $activity['description'], $activity['date'], $activity['time'], $adminName]);
+            $insert->execute([$activity['name'], $activity['description'], $activity['date'], $activity['academicYear'], $activity['semester'], $activity['time'], $adminName]);
             $inserted++;
         }
         $pdo->commit();
@@ -988,16 +1011,20 @@ function adminCreateActivitiesBulk($rows, $pdo) {
     ];
 }
 
-function adminListActivities($pdo) {
+function adminListActivities($academicYear, $semester, $pdo) {
     requireAdminSession();
     ensureActivitySchema($pdo);
-    $stmt = $pdo->query("SELECT a.id, a.name, a.description, a.activity_date activityDate,
+    $academicYear = trim((string)$academicYear) !== '' ? validateAcademicYear($academicYear) : currentAcademicYear($pdo);
+    $semester = in_array((string)$semester, ['1','2'], true) ? (int)$semester : (((int)date('n') >= 5 && (int)date('n') <= 10) ? 1 : 2);
+    $stmt = $pdo->prepare("SELECT a.id, a.name, a.description, a.activity_date activityDate, a.academic_year academicYear, a.semester,
         TIME_FORMAT(a.start_time, '%H:%i') startTime, a.target_level targetLevel,
         a.target_room targetRoom, a.status, a.created_by createdBy, a.created_at createdAt,
         COUNT(aa.student_id) checkedCount
         FROM activities a LEFT JOIN activity_attendance aa ON aa.activity_id = a.id
+        WHERE a.academic_year = ? AND a.semester = ?
         GROUP BY a.id ORDER BY a.activity_date DESC, a.id DESC LIMIT 100");
-    return ['success' => true, 'activities' => $stmt->fetchAll(PDO::FETCH_ASSOC)];
+    $stmt->execute([$academicYear, $semester]);
+    return ['success' => true, 'academicYear' => $academicYear, 'semester' => $semester, 'activities' => $stmt->fetchAll(PDO::FETCH_ASSOC)];
 }
 
 function adminSetActivityStatus($activityId, $status, $pdo) {
@@ -1016,32 +1043,34 @@ function adminSetActivityStatus($activityId, $status, $pdo) {
     return ['success' => true, 'message' => $status === 'open' ? 'เปิดกิจกรรมเรียบร้อยแล้ว' : 'ปิดกิจกรรมเรียบร้อยแล้ว'];
 }
 
-function adminGetActivityReport($level, $room, $pdo) {
+function adminGetActivityReport($level, $room, $academicYear, $semester, $pdo) {
     requireAdminSession();
-    return buildActivityReport($level, $room, $pdo);
+    return buildActivityReport($level, $room, $academicYear, $semester, $pdo);
 }
 
-function getActivityReportForTeacher($level, $room, $teacherName, $pdo) {
+function getActivityReportForTeacher($level, $room, $academicYear, $semester, $teacherName, $pdo) {
     requireTeacherSession($teacherName);
     [$level, $room] = validateActivityTarget($level, $room);
     if ($level === '' || $room === '') throw new InvalidArgumentException('กรุณาเลือกชั้นและห้อง');
     if (!canCurrentTeacherAccessActivityClass($level, $room, $pdo)) {
         throw new RuntimeException('คุณไม่มีสิทธิ์ดูรายงานกิจกรรมของห้องนี้');
     }
-    return buildActivityReport($level, $room, $pdo);
+    return buildActivityReport($level, $room, $academicYear, $semester, $pdo);
 }
 
-function buildActivityReport($level, $room, $pdo) {
+function buildActivityReport($level, $room, $academicYear, $semester, $pdo) {
     ensureActivitySchema($pdo);
     [$level, $room] = validateActivityTarget($level, $room);
     if ($level === '' || $room === '') throw new InvalidArgumentException('กรุณาเลือกชั้นและห้อง');
+    $academicYear = trim((string)$academicYear) !== '' ? validateAcademicYear($academicYear) : currentAcademicYear($pdo);
+    $semester = in_array((string)$semester, ['1','2'], true) ? (int)$semester : (((int)date('n') >= 5 && (int)date('n') <= 10) ? 1 : 2);
 
     $activityStmt = $pdo->prepare("SELECT id, name, activity_date activityDate,
             target_level targetLevel, target_room targetRoom
         FROM activities
-        WHERE (target_level IS NULL OR target_level = '') OR target_level = ?
+        WHERE academic_year = ? AND semester = ? AND ((target_level IS NULL OR target_level = '') OR target_level = ?)
         ORDER BY activity_date ASC, id ASC");
-    $activityStmt->execute([$level]);
+    $activityStmt->execute([$academicYear, $semester, $level]);
     $activities = array_values(array_filter($activityStmt->fetchAll(PDO::FETCH_ASSOC), function ($activity) use ($level, $room) {
         return activityAllowsClass([
             'target_level' => $activity['targetLevel'] ?? '',
@@ -1098,6 +1127,8 @@ function buildActivityReport($level, $room, $pdo) {
         'success' => true,
         'level' => $level,
         'room' => $room,
+        'academicYear' => $academicYear,
+        'semester' => $semester,
         'passThreshold' => 80,
         'activityCount' => $activityCount,
         'studentCount' => count($reportStudents),
@@ -1108,7 +1139,7 @@ function buildActivityReport($level, $room, $pdo) {
     ];
 }
 
-function getActivitiesForTeacher($teacherName, $pdo) {
+function getActivitiesForTeacher($teacherName, $academicYear, $semester, $pdo) {
     $teacherName = requireTeacherSession($teacherName);
     ensureActivitySchema($pdo);
     $user = getCurrentTeacherPermissions($pdo);
@@ -1116,9 +1147,12 @@ function getActivitiesForTeacher($teacherName, $pdo) {
     $isAdmin = !empty($user['is_admin']);
     $advisoryRoom = trim((string)($user['advisory_room'] ?? ''));
     $headLevel = trim((string)($user['head_level'] ?? ''));
-    $stmt = $pdo->query("SELECT id, name, description, activity_date activityDate,
+    $academicYear = trim((string)$academicYear) !== '' ? validateAcademicYear($academicYear) : currentAcademicYear($pdo);
+    $semester = in_array((string)$semester, ['1','2'], true) ? (int)$semester : (((int)date('n') >= 5 && (int)date('n') <= 10) ? 1 : 2);
+    $stmt = $pdo->prepare("SELECT id, name, description, activity_date activityDate, academic_year academicYear, semester,
         TIME_FORMAT(start_time, '%H:%i') startTime, target_level targetLevel,
-        target_room targetRoom, status FROM activities ORDER BY activity_date DESC, id DESC LIMIT 100");
+        target_room targetRoom, status FROM activities WHERE academic_year = ? AND semester = ? ORDER BY activity_date DESC, id DESC LIMIT 100");
+    $stmt->execute([$academicYear, $semester]);
     $activities = [];
     foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $activity) {
         $targetLevel = trim((string)($activity['targetLevel'] ?? ''));
@@ -1135,6 +1169,8 @@ function getActivitiesForTeacher($teacherName, $pdo) {
     }
     return [
         'success' => true,
+        'academicYear' => $academicYear,
+        'semester' => $semester,
         'activities' => $activities,
         'permissions' => ['isAdmin' => $isAdmin, 'advisoryRoom' => $advisoryRoom, 'headLevel' => $headLevel]
     ];
@@ -1444,6 +1480,23 @@ function currentAcademicYear($pdo) {
     return $year ?: (string)((int)date('Y') + 543);
 }
 
+function resolveAcademicPeriod($academicYear, $semester, $pdo) {
+    $academicYear = trim((string)$academicYear) !== '' ? validateAcademicYear($academicYear) : currentAcademicYear($pdo);
+    $semester = in_array((string)$semester, ['1', '2'], true)
+        ? (int)$semester
+        : (((int)date('n') >= 5 && (int)date('n') <= 10) ? 1 : 2);
+    return [$academicYear, $semester];
+}
+
+function academicPeriodBounds($academicYear, $semester, $pdo) {
+    [$academicYear, $semester] = resolveAcademicPeriod($academicYear, $semester, $pdo);
+    $gregorianYear = (int)$academicYear - 543;
+    if ($semester === 1) {
+        return [$academicYear, $semester, sprintf('%04d-05-01 00:00:00', $gregorianYear), sprintf('%04d-10-31 23:59:59', $gregorianYear)];
+    }
+    return [$academicYear, $semester, sprintf('%04d-11-01 00:00:00', $gregorianYear), sprintf('%04d-04-30 23:59:59', $gregorianYear + 1)];
+}
+
 function archiveCurrentRoster($pdo, $batchId, $year, $adminName) {
     $stmt = $pdo->prepare("INSERT INTO student_roster_archives
         (batch_id, academic_year, archived_at, archived_by, student_id, student_no, student_name, level, room, avatar, was_active)
@@ -1568,11 +1621,13 @@ function restoreAcademicYearBackup($batchId, $pdo) {
     }
 }
 
-function getAdminLogs($pdo) {
+function getAdminLogs($academicYear, $semester, $pdo) {
     $deductions = [];
     $rewards = [];
-    
-    $stmtD = $pdo->query("SELECT datetime, level, room, name, reason, points, teacher_name FROM deductions ORDER BY datetime DESC");
+    [$academicYear, $semester, $periodStart, $periodEnd] = academicPeriodBounds($academicYear, $semester, $pdo);
+
+    $stmtD = $pdo->prepare("SELECT datetime, level, room, name, reason, points, teacher_name FROM deductions WHERE datetime BETWEEN ? AND ? ORDER BY datetime DESC");
+    $stmtD->execute([$periodStart, $periodEnd]);
     while ($row = $stmtD->fetch()) {
         $deductions[] = [
             'date' => $row['datetime'],
@@ -1584,7 +1639,8 @@ function getAdminLogs($pdo) {
         ];
     }
     
-    $stmtR = $pdo->query("SELECT datetime, level, room, name, reason, points, teacher_name FROM rewards ORDER BY datetime DESC");
+    $stmtR = $pdo->prepare("SELECT datetime, level, room, name, reason, points, teacher_name FROM rewards WHERE datetime BETWEEN ? AND ? ORDER BY datetime DESC");
+    $stmtR->execute([$periodStart, $periodEnd]);
     while ($row = $stmtR->fetch()) {
         $rewards[] = [
             'date' => $row['datetime'],
@@ -1596,7 +1652,7 @@ function getAdminLogs($pdo) {
         ];
     }
     
-    return ['deductions' => $deductions, 'rewards' => $rewards];
+    return ['academicYear' => $academicYear, 'semester' => $semester, 'deductions' => $deductions, 'rewards' => $rewards];
 }
 
 function uploadGroupVolunteerPhoto($studentsArray, $base64Data, $filename, $teacherName, $hours, $activityDesc, $pdo) {
@@ -1650,10 +1706,12 @@ function uploadGroupVolunteerPhoto($studentsArray, $base64Data, $filename, $teac
     }
 }
 
-function getVolunteerGallery($teacherName, $isAdmin, $advisoryRoom, $viewType, $filterLevel = '', $filterRoom = '', $pdo) {
+function getVolunteerGallery($teacherName, $isAdmin, $advisoryRoom, $viewType, $filterLevel, $filterRoom, $academicYear, $semester, $pdo) {
     $sql = "SELECT datetime, student_id, name, level, room, image_url, teacher_name, hours, activity FROM volunteer";
     $params = [];
-    $where = [];
+    [$academicYear, $semester, $periodStart, $periodEnd] = academicPeriodBounds($academicYear, $semester, $pdo);
+    $where = ["datetime BETWEEN ? AND ?"];
+    $params = [$periodStart, $periodEnd];
     
     if ($viewType === 'dashboard') {
         if (!empty($advisoryRoom)) {
@@ -2015,7 +2073,7 @@ function saveMultipleDeductions($dateTime, $studentsArray, $reason, $points, $te
     }
 }
 
-function getRoomDeductionReport($level, $room, $teacherName, $pdo) {
+function getRoomDeductionReport($level, $room, $teacherName, $academicYear, $semester, $pdo) {
     if (!canTeacherAccess($teacherName, $level, $room, $pdo)) return [];
     
     // Get all students
@@ -2035,8 +2093,9 @@ function getRoomDeductionReport($level, $room, $teacherName, $pdo) {
     }
     
     // Query deductions
-    $stmtD = $pdo->prepare("SELECT student_id, SUM(points) as pts FROM deductions WHERE level = ? AND room = ? GROUP BY student_id");
-    $stmtD->execute([$level, $room]);
+    [, , $periodStart, $periodEnd] = academicPeriodBounds($academicYear, $semester, $pdo);
+    $stmtD = $pdo->prepare("SELECT student_id, SUM(points) as pts FROM deductions WHERE level = ? AND room = ? AND datetime BETWEEN ? AND ? GROUP BY student_id");
+    $stmtD->execute([$level, $room, $periodStart, $periodEnd]);
     
     while ($row = $stmtD->fetch()) {
         $sid = trim($row['student_id']);
@@ -2327,10 +2386,11 @@ function generateIndividualPDF($level, $room, $startDate, $endDate, $teacherName
     return ['html' => $html, 'filename' => "Indv_Report_{$level}_{$room}.pdf"];
 }
 
-function generateDeductPDF($level, $room, $teacherName, $pdo) {
+function generateDeductPDF($level, $room, $teacherName, $academicYear, $semester, $pdo) {
     if (!canTeacherAccess($teacherName, $level, $room, $pdo)) return ['error' => 'คุณไม่มีสิทธิ์เข้าถึงรายงานห้องเรียนนี้'];
     
-    $data = getRoomDeductionReport($level, $room, $teacherName, $pdo);
+    [$academicYear, $semester] = resolveAcademicPeriod($academicYear, $semester, $pdo);
+    $data = getRoomDeductionReport($level, $room, $teacherName, $academicYear, $semester, $pdo);
     if (empty($data)) return ['error' => 'ไม่พบข้อมูลคะแนนในห้องที่เลือก'];
     
     $tableRows = "";
@@ -2338,17 +2398,18 @@ function generateDeductPDF($level, $room, $teacherName, $pdo) {
         $tableRows .= "<tr><td>{$s['no']}</td><td class='text-left' style='text-align:left; padding-left:8px;'>{$s['name']}</td><td style='color:red;'>-{$s['deducted']}</td><td>{$s['remaining']}</td></tr>";
     }
     
-    $html = "<html><head>" . getPdfHeader("โรงเรียนมกุฎเมืองราชวิทยาลัย") . "</head><body><h3>รายงานคะแนนความประพฤตินักเรียน</h3><p><b>ระดับชั้น:</b> {$level}/{$room}</p><table><thead><tr><th style='width:15%;'>เลขที่</th><th style='width:45%;'>ชื่อ-สกุล</th><th style='width:20%;'>หักรวม</th><th style='width:20%;'>คะแนนคงเหลือ</th></tr></thead><tbody>{$tableRows}</tbody></table></body></html>";
+    $html = "<html><head>" . getPdfHeader("โรงเรียนมกุฎเมืองราชวิทยาลัย") . "</head><body><h3>รายงานคะแนนความประพฤตินักเรียน</h3><p><b>ปีการศึกษา:</b> {$academicYear} <b>ภาคเรียน:</b> {$semester} &nbsp; <b>ระดับชั้น:</b> {$level}/{$room}</p><table><thead><tr><th style='width:15%;'>เลขที่</th><th style='width:45%;'>ชื่อ-สกุล</th><th style='width:20%;'>หักรวม</th><th style='width:20%;'>คะแนนคงเหลือ</th></tr></thead><tbody>{$tableRows}</tbody></table></body></html>";
     
-    return ['html' => $html, 'filename' => "Deduct_Report_{$level}_{$room}.pdf"];
+    return ['html' => $html, 'filename' => "Deduct_Report_{$academicYear}_T{$semester}_{$level}_{$room}.pdf"];
 }
 
-function getMyLogs($tableName, $teacherName, $pdo) {
+function getMyLogs($tableName, $teacherName, $academicYear, $semester, $pdo) {
     // $tableName comes in as "Deductions" or "Rewards". Map to local SQL table name.
     $table = (strtolower($tableName) === 'rewards') ? 'rewards' : 'deductions';
     
-    $stmt = $pdo->prepare("SELECT datetime, level, room, name, reason, points FROM {$table} WHERE teacher_name = ? ORDER BY datetime DESC LIMIT 30");
-    $stmt->execute([$teacherName]);
+    [, , $periodStart, $periodEnd] = academicPeriodBounds($academicYear, $semester, $pdo);
+    $stmt = $pdo->prepare("SELECT datetime, level, room, name, reason, points FROM {$table} WHERE teacher_name = ? AND datetime BETWEEN ? AND ? ORDER BY datetime DESC LIMIT 30");
+    $stmt->execute([$teacherName, $periodStart, $periodEnd]);
     
     $results = [];
     while ($row = $stmt->fetch()) {
@@ -2362,10 +2423,11 @@ function getMyLogs($tableName, $teacherName, $pdo) {
     return $results;
 }
 
-function generateRewardPDF($level, $room, $teacherName, $pdo) {
+function generateRewardPDF($level, $room, $teacherName, $academicYear, $semester, $pdo) {
     if (!canTeacherAccess($teacherName, $level, $room, $pdo)) return ['error' => 'คุณไม่มีสิทธิ์เข้าถึงรายงานห้องเรียนนี้'];
     
-    $data = getRoomRewardReport($level, $room, $teacherName, $pdo);
+    [$academicYear, $semester] = resolveAcademicPeriod($academicYear, $semester, $pdo);
+    $data = getRoomRewardReport($level, $room, $teacherName, $academicYear, $semester, $pdo);
     if (empty($data)) return ['error' => 'ไม่พบข้อมูลคะแนนในห้องที่เลือก'];
     
     $tableRows = "";
@@ -2373,9 +2435,9 @@ function generateRewardPDF($level, $room, $teacherName, $pdo) {
         $tableRows .= "<tr><td>{$s['no']}</td><td class='text-left' style='text-align:left; padding-left:8px;'>{$s['name']}</td><td style='color:green;'>+{$s['total']}</td></tr>";
     }
     
-    $html = "<html><head>" . getPdfHeader("โรงเรียนมกุฎเมืองราชวิทยาลัย") . "</head><body><h3>รายงานคะแนนความดีนักเรียนสะสม</h3><p><b>ระดับชั้น:</b> {$level}/{$room}</p><table><thead><tr><th style='width:15%;'>เลขที่</th><th style='width:55%;'>ชื่อ-สกุล</th><th style='width:30%;'>คะแนนความดีสะสม</th></tr></thead><tbody>{$tableRows}</tbody></table></body></html>";
+    $html = "<html><head>" . getPdfHeader("โรงเรียนมกุฎเมืองราชวิทยาลัย") . "</head><body><h3>รายงานคะแนนความดีนักเรียนสะสม</h3><p><b>ปีการศึกษา:</b> {$academicYear} <b>ภาคเรียน:</b> {$semester} &nbsp; <b>ระดับชั้น:</b> {$level}/{$room}</p><table><thead><tr><th style='width:15%;'>เลขที่</th><th style='width:55%;'>ชื่อ-สกุล</th><th style='width:30%;'>คะแนนความดีสะสม</th></tr></thead><tbody>{$tableRows}</tbody></table></body></html>";
     
-    return ['html' => $html, 'filename' => "Reward_Report_{$level}_{$room}.pdf"];
+    return ['html' => $html, 'filename' => "Reward_Report_{$academicYear}_T{$semester}_{$level}_{$room}.pdf"];
 }
 
 function saveReward($dateTime, $level, $room, $stuId, $stuName, $reason, $points, $teacherName, $pdo) {
@@ -2389,7 +2451,7 @@ function saveReward($dateTime, $level, $room, $stuId, $stuName, $reason, $points
     return "บันทึกการบวกคะแนนเรียบร้อย โดยครู " . $teacherName . "!";
 }
 
-function getRoomRewardReport($level, $room, $teacherName, $pdo) {
+function getRoomRewardReport($level, $room, $teacherName, $academicYear, $semester, $pdo) {
     if (!canTeacherAccess($teacherName, $level, $room, $pdo)) return [];
     
     // Get all students
@@ -2408,8 +2470,9 @@ function getRoomRewardReport($level, $room, $teacherName, $pdo) {
     }
     
     // Get rewards sum
-    $stmtR = $pdo->prepare("SELECT student_id, SUM(points) as pts FROM rewards WHERE level = ? AND room = ? GROUP BY student_id");
-    $stmtR->execute([$level, $room]);
+    [, , $periodStart, $periodEnd] = academicPeriodBounds($academicYear, $semester, $pdo);
+    $stmtR = $pdo->prepare("SELECT student_id, SUM(points) as pts FROM rewards WHERE level = ? AND room = ? AND datetime BETWEEN ? AND ? GROUP BY student_id");
+    $stmtR->execute([$level, $room, $periodStart, $periodEnd]);
     
     while ($row = $stmtR->fetch()) {
         $sid = trim($row['student_id']);
@@ -2422,8 +2485,10 @@ function getRoomRewardReport($level, $room, $teacherName, $pdo) {
     return array_values($rewardMap);
 }
 
-function getAllRewardsRanked($pdo) {
-    $stmt = $pdo->query("SELECT student_id, name, level, room, SUM(points) as total FROM rewards GROUP BY student_id, name, level, room ORDER BY total DESC");
+function getAllRewardsRanked($academicYear, $semester, $pdo) {
+    [, , $periodStart, $periodEnd] = academicPeriodBounds($academicYear, $semester, $pdo);
+    $stmt = $pdo->prepare("SELECT student_id, name, level, room, SUM(points) as total FROM rewards WHERE datetime BETWEEN ? AND ? GROUP BY student_id, name, level, room ORDER BY total DESC");
+    $stmt->execute([$periodStart, $periodEnd]);
     $results = [];
     while ($row = $stmt->fetch()) {
         $results[] = [
@@ -2435,11 +2500,14 @@ function getAllRewardsRanked($pdo) {
     return $results;
 }
 
-function getStudentHistoryForTeacher($stuId, $pdo) {
+function getStudentHistoryForTeacher($stuId, $academicYear, $semester, $pdo) {
     $history = ['deductions' => [], 'rewards' => []];
-    
-    $stmtD = $pdo->prepare("SELECT datetime, reason, points FROM deductions WHERE student_id = ? ORDER BY datetime DESC");
-    $stmtD->execute([$stuId]);
+    [$resolvedYear, $resolvedSemester, $periodStart, $periodEnd] = academicPeriodBounds($academicYear, $semester, $pdo);
+    $history['academicYear'] = $resolvedYear;
+    $history['semester'] = $resolvedSemester;
+
+    $stmtD = $pdo->prepare("SELECT datetime, reason, points FROM deductions WHERE student_id = ? AND datetime BETWEEN ? AND ? ORDER BY datetime DESC");
+    $stmtD->execute([$stuId, $periodStart, $periodEnd]);
     while ($row = $stmtD->fetch()) {
         $history['deductions'][] = [
             'date' => $row['datetime'],
@@ -2448,8 +2516,8 @@ function getStudentHistoryForTeacher($stuId, $pdo) {
         ];
     }
     
-    $stmtR = $pdo->prepare("SELECT datetime, reason, points FROM rewards WHERE student_id = ? ORDER BY datetime DESC");
-    $stmtR->execute([$stuId]);
+    $stmtR = $pdo->prepare("SELECT datetime, reason, points FROM rewards WHERE student_id = ? AND datetime BETWEEN ? AND ? ORDER BY datetime DESC");
+    $stmtR->execute([$stuId, $periodStart, $periodEnd]);
     while ($row = $stmtR->fetch()) {
         $history['rewards'][] = [
             'date' => $row['datetime'],
@@ -2782,7 +2850,7 @@ function saveClubAttendance($clubName, $date, $records, $pdo) {
     }
 }
 
-function getClubAttendanceReport($clubName, $pdo) {
+function getClubAttendanceReport($clubName, $academicYear, $semester, $pdo) {
     try {
         // Map members
         $stmtMem = $pdo->prepare("SELECT student_id, name, level, room FROM club_members WHERE club_name = ?");
@@ -2804,8 +2872,9 @@ function getClubAttendanceReport($clubName, $pdo) {
         }
         
         // Fetch attendance
-        $stmtAtt = $pdo->prepare("SELECT student_id, name, status FROM club_attendance WHERE club_name = ?");
-        $stmtAtt->execute([$clubName]);
+        [, , $periodStart, $periodEnd] = academicPeriodBounds($academicYear, $semester, $pdo);
+        $stmtAtt = $pdo->prepare("SELECT student_id, name, status FROM club_attendance WHERE club_name = ? AND date BETWEEN ? AND ?");
+        $stmtAtt->execute([$clubName, substr($periodStart, 0, 10), substr($periodEnd, 0, 10)]);
         
         while ($row = $stmtAtt->fetch()) {
             $sid = trim($row['student_id']);
@@ -3114,8 +3183,9 @@ function addMultipleStudentsToClub($clubName, $studentsArray, $pdo) {
     }
 }
 
-function generateClubReportPDF($clubName, $pdo) {
-    $reportRes = getClubAttendanceReport($clubName, $pdo);
+function generateClubReportPDF($clubName, $academicYear, $semester, $pdo) {
+    [$academicYear, $semester] = resolveAcademicPeriod($academicYear, $semester, $pdo);
+    $reportRes = getClubAttendanceReport($clubName, $academicYear, $semester, $pdo);
     if (!$reportRes['success']) return ['error' => $reportRes['message']];
     
     $data = $reportRes['data'];
@@ -3152,6 +3222,7 @@ function generateClubReportPDF($clubName, $pdo) {
       <h3>รายงานสรุปการเข้าเรียนชุมนุม</h3>
       <h4 style='font-size: 11.5pt; font-weight: bold; margin: 2px 0 3px 0; text-align: center;'>ชื่อชุมนุม: {$clubName}</h4>
       <p style='text-align: center; margin: 2px 0 8px 0; font-size: 10.5pt;'>
+        <b>ปีการศึกษา:</b> {$academicYear} &nbsp; <b>ภาคเรียน:</b> {$semester}<br>
         <b>ครูที่ปรึกษา:</b> {$teacherFormatted} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b>จำนวนสมาชิก:</b> " . count($data) . " คน
       </p>
       <table style='width:100%; border-collapse:collapse; margin-top: 6px;'>
@@ -3169,7 +3240,7 @@ function generateClubReportPDF($clubName, $pdo) {
       </table>
     </body></html>";
     
-    return ['html' => $html, 'filename' => "ClubReport_{$clubName}.pdf"];
+    return ['html' => $html, 'filename' => "ClubReport_{$academicYear}_T{$semester}_{$clubName}.pdf"];
 }
 
 function generateNoClubReportPDF($pdo) {
@@ -3274,7 +3345,8 @@ function generateAdminRoomClubsPDF($level, $room, $pdo) {
     return ['html' => $html, 'filename' => "Report_RoomClubs_{$level}_{$room}.pdf"];
 }
 
-function getDashboardData($pdo) {
+function getDashboardData($academicYear, $semester, $pdo) {
+    [$academicYear, $semester] = resolveAcademicPeriod($academicYear, $semester, $pdo);
     // Count total, enrolled, pending
     $stmtT = $pdo->query("SELECT COUNT(*) FROM students WHERE is_active = 1");
     $totalStudents = (int)$stmtT->fetchColumn();
@@ -3298,6 +3370,8 @@ function getDashboardData($pdo) {
     }
     
     return [
+        'academicYear' => $academicYear,
+        'semester' => $semester,
         'totalStudents' => $totalStudents,
         'enrolledStudents' => $enrolledStudents,
         'pendingStudents' => $pendingStudents,
