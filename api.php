@@ -48,9 +48,9 @@ if (!$action) {
 
 // Route AJAX requests
 try {
-    if (empty($_SESSION['academic_year_schema_ready'])) {
+    if (empty($_SESSION['academic_year_schema_v2_ready'])) {
         ensureAcademicYearSchema($pdo);
-        $_SESSION['academic_year_schema_ready'] = true;
+        $_SESSION['academic_year_schema_v2_ready'] = true;
     }
     // Release the session file lock before database/report work so parallel
     // AJAX requests from the same browser do not block one another.
@@ -3542,9 +3542,9 @@ function toggleClubCreationSystemStatus($currentStatus, $pdo) {
 
 function handleFaceApi($body, $pdo) {
     try {
-        if (empty($_SESSION['academic_year_schema_ready'])) {
+        if (empty($_SESSION['academic_year_schema_v2_ready'])) {
             ensureAcademicYearSchema($pdo);
-            $_SESSION['academic_year_schema_ready'] = true;
+            $_SESSION['academic_year_schema_v2_ready'] = true;
         }
         session_write_close();
         // Validate secret
