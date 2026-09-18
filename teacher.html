@@ -1410,23 +1410,17 @@
                 </div>
                 <button class="btn btn-sm btn-outline-secondary" onclick="loadAdminActivities()"><i class="fas fa-sync-alt me-1"></i>รีเฟรช</button>
               </div>
-              <div class="row g-2 mb-2">
-                <div class="col-12 col-md-5"><label class="form-label small fw-bold">ชื่อกิจกรรม</label><input id="adminActivityName" class="form-control" maxlength="150" placeholder="เช่น กิจกรรมวันไหว้ครู"></div>
-                <div class="col-6 col-md-2"><label class="form-label small fw-bold">วันที่</label><input id="adminActivityDate" type="date" class="form-control"></div>
-                <div class="col-6 col-md-2"><label class="form-label small fw-bold">เวลา (ถ้ามี)</label><input id="adminActivityTime" type="time" class="form-control"></div>
-                <div class="col-6 col-md-1"><label class="form-label small fw-bold">ชั้น</label><select id="adminActivityLevel" class="form-select" onchange="syncAdminActivityRoomState()"><option value="">ทุกชั้น</option><option value="ม.1">ม.1</option><option value="ม.2">ม.2</option><option value="ม.3">ม.3</option><option value="ม.4">ม.4</option><option value="ม.5">ม.5</option><option value="ม.6">ม.6</option></select></div>
-                <div class="col-6 col-md-2"><label class="form-label small fw-bold">ห้อง</label><select id="adminActivityRoom" class="form-select" disabled><option value="">ทุกห้อง</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option></select></div>
-              </div>
               <div class="row g-2 mb-3">
-                <div class="col-12 col-md-9"><label class="form-label small fw-bold">รายละเอียด (ถ้ามี)</label><input id="adminActivityDescription" class="form-control" maxlength="500" placeholder="สถานที่หรือรายละเอียดเพิ่มเติม"></div>
-                <div class="col-12 col-md-3 d-flex align-items-end"><button id="btnAdminCreateActivity" class="btn w-100 fw-bold text-white" style="background:#7c3aed;" onclick="adminCreateActivity()"><i class="fas fa-plus-circle me-1"></i>เพิ่มกิจกรรม</button></div>
+                <div class="col-12 col-md-7"><label class="form-label small fw-bold">ชื่อกิจกรรม</label><input id="adminActivityName" class="form-control" maxlength="150" placeholder="เช่น กิจกรรมวันไหว้ครู"></div>
+                <div class="col-8 col-md-3"><label class="form-label small fw-bold">วัน/เดือน/ปี</label><input id="adminActivityDate" type="date" class="form-control"></div>
+                <div class="col-4 col-md-2 d-flex align-items-end"><button id="btnAdminCreateActivity" class="btn w-100 fw-bold text-white" style="background:#7c3aed;" onclick="adminCreateActivity()"><i class="fas fa-plus-circle me-1"></i>เพิ่มกิจกรรม</button></div>
               </div>
               <div class="border rounded-3 p-3 mb-3" style="background:#faf8ff;border-color:#c4b5fd !important;">
                 <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-2">
                   <div><b style="color:#6d28d9;"><i class="fas fa-layer-group me-1"></i>เพิ่มกิจกรรมหลายรายการพร้อมกัน</b><br><small class="text-muted">กรอกกิจกรรมทั้งเทอมได้สูงสุด 100 รายการ ทุกกิจกรรมใช้กับทุกระดับและทุกห้อง</small></div>
                   <button type="button" class="btn btn-sm btn-outline-primary" onclick="addAdminActivityBulkRow()"><i class="fas fa-plus me-1"></i>เพิ่มแถว</button>
                 </div>
-                <div class="row g-2 d-none d-md-flex px-2 mb-1 small fw-bold text-muted"><div class="col-md-3">ชื่อกิจกรรม</div><div class="col-md-2">วันที่</div><div class="col-md-2">เวลา (ถ้ามี)</div><div class="col-md-4">รายละเอียด (ถ้ามี)</div><div class="col-md-1"></div></div>
+                <div class="row g-2 d-none d-md-flex px-2 mb-1 small fw-bold text-muted"><div class="col-md-7">ชื่อกิจกรรม</div><div class="col-md-4">วัน/เดือน/ปี</div><div class="col-md-1"></div></div>
                 <div id="adminActivityBulkRows"></div>
                 <div class="d-flex flex-wrap gap-2 mt-3">
                   <button type="button" class="btn btn-outline-secondary" onclick="resetAdminActivityBulkRows()"><i class="fas fa-rotate-left me-1"></i>ล้างรายการ</button>
@@ -4143,13 +4137,6 @@ function loadTeachersForClub() {
       return String(value ?? '').replace(/[&<>'"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch]));
     }
 
-    function syncAdminActivityRoomState() {
-      const hasLevel = !!document.getElementById('adminActivityLevel').value;
-      const roomSelect = document.getElementById('adminActivityRoom');
-      roomSelect.disabled = !hasLevel;
-      if (!hasLevel) roomSelect.value = '';
-    }
-
     function ensureAdminActivityBulkRows() {
       const container = document.getElementById('adminActivityBulkRows');
       if (container && !container.children.length) resetAdminActivityBulkRows();
@@ -4164,10 +4151,8 @@ function loadTeachersForClub() {
       }
       const row = document.createElement('div');
       row.className = 'row g-2 align-items-end border-bottom py-2 admin-activity-bulk-row';
-      row.innerHTML = `<div class="col-12 col-md-3"><label class="d-md-none small fw-bold">ชื่อกิจกรรม</label><input class="form-control bulk-activity-name" maxlength="150" placeholder="ชื่อกิจกรรม"></div>
-        <div class="col-6 col-md-2"><label class="d-md-none small fw-bold">วันที่</label><input type="date" class="form-control bulk-activity-date"></div>
-        <div class="col-6 col-md-2"><label class="d-md-none small fw-bold">เวลา</label><input type="time" class="form-control bulk-activity-time"></div>
-        <div class="col-10 col-md-4"><label class="d-md-none small fw-bold">รายละเอียด</label><input class="form-control bulk-activity-description" maxlength="500" placeholder="รายละเอียดหรือสถานที่ (ถ้ามี)"></div>
+      row.innerHTML = `<div class="col-12 col-md-7"><label class="d-md-none small fw-bold">ชื่อกิจกรรม</label><input class="form-control bulk-activity-name" maxlength="150" placeholder="ชื่อกิจกรรม"></div>
+        <div class="col-10 col-md-4"><label class="d-md-none small fw-bold">วัน/เดือน/ปี</label><input type="date" class="form-control bulk-activity-date"></div>
         <div class="col-2 col-md-1"><button type="button" class="btn btn-outline-danger w-100" title="ลบแถว" onclick="removeAdminActivityBulkRow(this)"><i class="fas fa-trash"></i></button></div>`;
       container.appendChild(row);
       row.querySelector('.bulk-activity-name').focus();
@@ -4193,10 +4178,10 @@ function loadTeachersForClub() {
         row: index + 1,
         name: row.querySelector('.bulk-activity-name').value.trim(),
         date: row.querySelector('.bulk-activity-date').value,
-        time: row.querySelector('.bulk-activity-time').value,
-        description: row.querySelector('.bulk-activity-description').value.trim(),
+        time: '',
+        description: '',
         level: '', room: ''
-      })).filter(item => item.name || item.date || item.time || item.description);
+      })).filter(item => item.name || item.date);
       if (!rows.length) {
         Swal.fire('ยังไม่มีรายการ', 'กรุณากรอกกิจกรรมอย่างน้อย 1 รายการ', 'warning');
         return;
@@ -4242,11 +4227,11 @@ function loadTeachersForClub() {
     function adminCreateActivity() {
       const data = {
         name: document.getElementById('adminActivityName').value.trim(),
-        description: document.getElementById('adminActivityDescription').value.trim(),
+        description: '',
         date: document.getElementById('adminActivityDate').value,
-        time: document.getElementById('adminActivityTime').value,
-        level: document.getElementById('adminActivityLevel').value,
-        room: document.getElementById('adminActivityRoom').value
+        time: '',
+        level: '',
+        room: ''
       };
       if (!data.name || !data.date) {
         Swal.fire('ข้อมูลไม่ครบ', 'กรุณาระบุชื่อและวันที่กิจกรรม', 'warning');
@@ -4259,8 +4244,6 @@ function loadTeachersForClub() {
         button.disabled = false;
         button.innerHTML = '<i class="fas fa-plus-circle me-1"></i>เพิ่มกิจกรรม';
         document.getElementById('adminActivityName').value = '';
-        document.getElementById('adminActivityDescription').value = '';
-        document.getElementById('adminActivityTime').value = '';
         Swal.fire('สำเร็จ', res.message, 'success');
         loadAdminActivities();
       }).withFailureHandler(err => {
