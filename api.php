@@ -114,6 +114,9 @@ function routeAction($action, $args, $pdo) {
         case 'adminSetActivityStatus':
             return adminSetActivityStatus($args[0], $args[1], $pdo);
 
+        case 'adminDeleteActivity':
+            return adminDeleteActivity($args[0], $pdo);
+
         case 'adminGetActivityReport':
             return adminGetActivityReport($args[0], $args[1], $args[2] ?? '', $args[3] ?? '', $pdo);
 
@@ -125,6 +128,12 @@ function routeAction($action, $args, $pdo) {
 
         case 'getActivityStudents':
             return getActivityStudents($args[0], $args[1], $args[2], $args[3] ?? '', $pdo);
+
+        case 'getActivityMatrix':
+            return getActivityMatrix($args[0], $args[1], $args[2] ?? '', $pdo);
+
+        case 'saveActivityMatrix':
+            return saveActivityMatrix($args[0], $args[1], $args[2] ?? [], $args[3] ?? '', $pdo);
 
         case 'saveActivityAttendance':
             return saveActivityAttendance($args[0], $args[1], $args[2], $args[3] ?? [], $args[4] ?? '', $pdo);
@@ -146,6 +155,9 @@ function routeAction($action, $args, $pdo) {
 
         case 'adminUpdateStudentRecord':
             return adminUpdateStudentRecord($args[0], $args[1], $pdo);
+
+        case 'adminBulkMoveStudents':
+            return adminBulkMoveStudents($args[0] ?? [], $pdo);
 
         case 'adminSetStudentActive':
             return adminSetStudentActive($args[0], $args[1], $args[2] ?? '', $pdo);
@@ -293,6 +305,9 @@ function routeAction($action, $args, $pdo) {
             
         case 'addClubAdminRole':
             return addClubAdminRole($args[0], $pdo);
+
+        case 'addActivityAdminRole':
+            return addActivityAdminRole($args[0], $pdo);
             
         case 'getClubsListAdmin':
             return getClubsListAdmin($pdo);
@@ -305,6 +320,9 @@ function routeAction($action, $args, $pdo) {
             
         case 'checkIfClubAdmin':
             return checkIfClubAdmin($args[0], $pdo);
+
+        case 'checkIfActivityAdmin':
+            return checkIfActivityAdmin($args[0], $pdo);
             
         case 'getAllClubsInfoWithStatus':
             return getAllClubsInfoWithStatus($pdo);
@@ -407,10 +425,16 @@ function processLogin($user, $pass, $pdo) {
     $_SESSION['teacher_name'] = trim($foundUser['name']);
     $_SESSION['is_admin'] = $isAdmin;
     
+    ensureActivityAdminSchema($pdo);
+
     // Check if club admin
     $stmtAdmin = $pdo->prepare("SELECT COUNT(*) FROM club_admins WHERE username = ?");
     $stmtAdmin->execute([$username]);
     $isClubAdmin = ($stmtAdmin->fetchColumn() > 0);
+    $stmtActivityAdmin = $pdo->prepare("SELECT COUNT(*) FROM activity_admins WHERE username = ?");
+    $stmtActivityAdmin->execute([$username]);
+    $isActivityAdmin = ($stmtActivityAdmin->fetchColumn() > 0);
+    $_SESSION['is_activity_admin'] = $isActivityAdmin;
     
     // Get all teachers for datalist
     $teachersList = [];
@@ -426,6 +450,7 @@ function processLogin($user, $pass, $pdo) {
         'avatar' => !empty($foundUser['avatar']) ? trim($foundUser['avatar']) : null,
         'isAdmin' => $isAdmin,
         'isClubAdmin' => $isClubAdmin,
+        'isActivityAdmin' => $isActivityAdmin,
         'advisoryRoom' => $foundUser['advisory_room'] ?? '',
         'headLevel' => $foundUser['head_level'] ?? '',
         'allTeachers' => $teachersList
@@ -831,6 +856,14 @@ function ensureActivitySchema($pdo) {
         KEY idx_activity_attendance_class (activity_id, level, room),
         KEY idx_activity_attendance_student (student_id)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    ensureActivityAdminSchema($pdo);
+}
+
+function ensureActivityAdminSchema($pdo) {
+    $pdo->exec("CREATE TABLE IF NOT EXISTS activity_admins (
+        username VARCHAR(100) NOT NULL PRIMARY KEY,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 }
 
 function requireTeacherSession($requestedTeacherName = '') {
@@ -957,7 +990,7 @@ function normalizeActivityData($data, $pdo) {
 }
 
 function adminCreateActivity($data, $pdo) {
-    $adminName = requireAdminSession();
+    $adminName = requireActivityAdminSession();
     ensureActivitySchema($pdo);
     $activity = normalizeActivityData($data, $pdo);
 
@@ -973,7 +1006,7 @@ function adminCreateActivity($data, $pdo) {
 }
 
 function adminCreateActivitiesBulk($rows, $pdo) {
-    $adminName = requireAdminSession();
+    $adminName = requireActivityAdminSession();
     ensureActivitySchema($pdo);
     if (!is_array($rows) || count($rows) < 1 || count($rows) > 100) {
         throw new InvalidArgumentException('กรุณาระบุกิจกรรม 1-100 รายการต่อครั้ง');
@@ -1027,7 +1060,7 @@ function adminCreateActivitiesBulk($rows, $pdo) {
 }
 
 function adminListActivities($academicYear, $semester, $pdo) {
-    requireAdminSession();
+    requireActivityAdminSession();
     ensureActivitySchema($pdo);
     [$academicYear, $semester] = resolveAcademicPeriod($academicYear, $semester, $pdo);
     $stmt = $pdo->prepare("SELECT a.id, a.name, a.description, a.activity_date activityDate, a.academic_year academicYear, a.semester,
@@ -1042,7 +1075,7 @@ function adminListActivities($academicYear, $semester, $pdo) {
 }
 
 function adminSetActivityStatus($activityId, $status, $pdo) {
-    requireAdminSession();
+    requireActivityAdminSession();
     ensureActivitySchema($pdo);
     $activityId = validateActivityId($activityId);
     $status = trim((string)$status);
@@ -1058,8 +1091,57 @@ function adminSetActivityStatus($activityId, $status, $pdo) {
     return ['success' => true, 'message' => $status === 'open' ? 'เปิดกิจกรรมเรียบร้อยแล้ว' : 'ปิดกิจกรรมเรียบร้อยแล้ว'];
 }
 
+function adminDeleteActivity($activityId, $pdo) {
+    requireActivityAdminSession();
+    ensureActivitySchema($pdo);
+    $activityId = validateActivityId($activityId);
+    $stmt = $pdo->prepare("SELECT name FROM activities WHERE id = ? LIMIT 1");
+    $stmt->execute([$activityId]);
+    $activity = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$activity) throw new RuntimeException('ไม่พบกิจกรรมที่ต้องการลบ');
+
+    $pdo->beginTransaction();
+    try {
+        // ลบผลเช็กชื่อที่อ้างอิงกิจกรรมก่อน เพื่อรองรับฐานข้อมูลเดิมที่ไม่มี FK cascade
+        $attendance = $pdo->prepare("DELETE FROM activity_attendance WHERE activity_id = ?");
+        $attendance->execute([$activityId]);
+        $delete = $pdo->prepare("DELETE FROM activities WHERE id = ?");
+        $delete->execute([$activityId]);
+        if ($delete->rowCount() < 1) throw new RuntimeException('ไม่สามารถลบกิจกรรมได้');
+        $pdo->commit();
+    } catch (Exception $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        throw $e;
+    }
+    return ['success' => true, 'message' => 'ลบกิจกรรม “' . $activity['name'] . '” และผลเช็กชื่อที่เกี่ยวข้องแล้ว'];
+}
+
 function adminGetActivityReport($level, $room, $academicYear, $semester, $pdo) {
-    requireAdminSession();
+    requireActivityAdminSession();
+    if (trim((string)$room) === 'all') {
+        [$level, $normalizedRoom] = validateActivityTarget($level, '1');
+        if ($level === '') throw new InvalidArgumentException('กรุณาเลือกระดับชั้น');
+        [$academicYear, $semester] = resolveAcademicPeriod($academicYear, $semester, $pdo);
+        $combined = null;
+        for ($roomNo = 1; $roomNo <= 6; $roomNo++) {
+            $part = buildActivityReport($level, (string)$roomNo, $academicYear, $semester, $pdo);
+            if ($combined === null) {
+                $combined = $part;
+                $combined['room'] = 'all';
+                $combined['students'] = [];
+                $combined['passedCount'] = 0;
+                $combined['failedCount'] = 0;
+            }
+            foreach ($part['students'] as $student) {
+                $student['room'] = (string)$roomNo;
+                $combined['students'][] = $student;
+                if (!empty($student['passed'])) $combined['passedCount']++;
+                else $combined['failedCount']++;
+            }
+        }
+        $combined['studentCount'] = count($combined['students']);
+        return $combined;
+    }
     return buildActivityReport($level, $room, $academicYear, $semester, $pdo);
 }
 
@@ -1279,6 +1361,96 @@ function saveActivityAttendance($activityId, $level, $room, $records, $teacherNa
     }
 }
 
+function getActivityMatrix($level, $room, $teacherName, $pdo) {
+    $teacherName = requireTeacherSession($teacherName);
+    [$level, $room] = validateActivityTarget($level, $room);
+    if ($level === '' || $room === '') throw new InvalidArgumentException('กรุณาเลือกชั้นและห้อง');
+    if (!canCurrentTeacherAccessActivityClass($level, $room, $pdo)) {
+        throw new RuntimeException('คุณไม่มีสิทธิ์เข้าถึงห้องเรียนนี้');
+    }
+    $report = buildActivityReport($level, $room, '', '', $pdo);
+    $activities = $report['activities'] ?? [];
+    $activityIds = array_map(static function ($activity) { return (int)$activity['id']; }, $activities);
+    $statuses = [];
+    if ($activityIds) {
+        $placeholders = implode(',', array_fill(0, count($activityIds), '?'));
+        $stmt = $pdo->prepare("SELECT activity_id, student_id, status, note FROM activity_attendance WHERE activity_id IN ($placeholders) AND level = ? AND room = ?");
+        $stmt->execute(array_merge($activityIds, [$level, $room]));
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $sid = trim((string)$row['student_id']);
+            $statuses[$sid][(string)(int)$row['activity_id']] = [
+                'status' => trim((string)$row['status']),
+                'note' => trim((string)($row['note'] ?? ''))
+            ];
+        }
+    }
+    foreach ($report['students'] as &$student) {
+        $studentId = (string)$student['id'];
+        $student['statuses'] = $statuses[$studentId] ?? [];
+    }
+    unset($student);
+    return [
+        'success' => true,
+        'academicYear' => $report['academicYear'],
+        'semester' => $report['semester'],
+        'level' => $level,
+        'room' => $room,
+        'activities' => $activities,
+        'students' => $report['students'],
+        'passThreshold' => 80
+    ];
+}
+
+function saveActivityMatrix($level, $room, $rows, $teacherName, $pdo) {
+    $teacherName = requireTeacherSession($teacherName);
+    [$level, $room] = validateActivityTarget($level, $room);
+    if ($level === '' || $room === '') throw new InvalidArgumentException('กรุณาเลือกชั้นและห้อง');
+    if (!canCurrentTeacherAccessActivityClass($level, $room, $pdo)) {
+        throw new RuntimeException('คุณไม่มีสิทธิ์บันทึกข้อมูลห้องเรียนนี้');
+    }
+    if (!is_array($rows) || count($rows) < 1 || count($rows) > 500) throw new InvalidArgumentException('รายการเช็กกิจกรรมไม่ถูกต้อง');
+    $report = buildActivityReport($level, $room, '', '', $pdo);
+    $activities = [];
+    foreach ($report['activities'] as $activity) $activities[(string)(int)$activity['id']] = $activity;
+    $studentStmt = $pdo->prepare("SELECT student_id, name FROM students WHERE is_active = 1 AND level = ? AND room = ?");
+    $studentStmt->execute([$level, $room]);
+    $students = [];
+    foreach ($studentStmt->fetchAll(PDO::FETCH_ASSOC) as $student) $students[trim($student['student_id'])] = trim($student['name']);
+    $validStatuses = ['เข้าร่วม', 'ลา (มีใบรับรองแพทย์)', 'ไม่เข้าร่วมกิจกรรม'];
+    $normalized = [];
+    foreach ($rows as $row) {
+        if (!is_array($row)) throw new InvalidArgumentException('รูปแบบรายชื่อนักเรียนไม่ถูกต้อง');
+        $studentId = trim((string)($row['id'] ?? ''));
+        if (!isset($students[$studentId])) throw new RuntimeException('พบรายชื่อนักเรียนที่ไม่อยู่ในห้องที่เลือก');
+        $rowStatuses = $row['statuses'] ?? [];
+        if (!is_array($rowStatuses)) throw new InvalidArgumentException('รูปแบบสถานะกิจกรรมไม่ถูกต้อง');
+        foreach ($rowStatuses as $activityId => $value) {
+            $activityKey = (string)(int)$activityId;
+            if (!isset($activities[$activityKey])) throw new RuntimeException('พบกิจกรรมที่ไม่อยู่ในภาคเรียนที่เลือก');
+            if (!is_array($value)) continue;
+            $status = trim((string)($value['status'] ?? ''));
+            $note = trim((string)($value['note'] ?? ''));
+            if ($status === '') continue;
+            if (!in_array($status, $validStatuses, true)) throw new InvalidArgumentException('สถานะกิจกรรมไม่ถูกต้อง');
+            if (($activities[$activityKey]['status'] ?? '') !== 'open') throw new RuntimeException('มีกิจกรรมที่ปิดการเช็กชื่อแล้ว');
+            if (mb_strlen($note, 'UTF-8') > 255 || preg_match('/[<>{}\x00-\x1F]/u', $note)) throw new InvalidArgumentException('หมายเหตุไม่ถูกต้อง');
+            $normalized[] = [(int)$activityKey, $studentId, $students[$studentId], $status, $note];
+        }
+    }
+    if (!$normalized) throw new InvalidArgumentException('ยังไม่มีสถานะที่เปลี่ยนแปลง');
+    try {
+        $pdo->beginTransaction();
+        $upsert = $pdo->prepare("INSERT INTO activity_attendance (activity_id, student_id, student_name, level, room, status, note, teacher_name, checked_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW()) ON DUPLICATE KEY UPDATE student_name = VALUES(student_name), status = VALUES(status), note = VALUES(note), teacher_name = VALUES(teacher_name), checked_at = NOW()");
+        foreach ($normalized as $item) $upsert->execute([$item[0], $item[1], $item[2], $level, $room, $item[3], $item[4] !== '' ? $item[4] : null, $teacherName]);
+        $pdo->commit();
+        return ['success' => true, 'message' => 'บันทึกการเช็กกิจกรรม ' . count($normalized) . ' รายการเรียบร้อยแล้ว'];
+    } catch (Exception $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        throw $e;
+    }
+}
+
 function adminUpdateTeacherAssignment($userId, $advisoryRoom, $headLevel, $pdo) {
     requireAdminSession();
     $userId = filter_var($userId, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
@@ -1316,6 +1488,16 @@ function adminUpdateTeacherAssignment($userId, $advisoryRoom, $headLevel, $pdo) 
 function requireAdminSession() {
     if (empty($_SESSION['is_admin']) || empty($_SESSION['username'])) {
         throw new RuntimeException('เซสชันผู้ดูแลระบบหมดอายุ กรุณาออกจากระบบแล้วเข้าสู่ระบบใหม่');
+    }
+    return trim($_SESSION['teacher_name'] ?? $_SESSION['username']);
+}
+
+function requireActivityAdminSession() {
+    if (empty($_SESSION['username']) || empty($_SESSION['teacher_name'])) {
+        throw new RuntimeException('เซสชันหมดอายุ กรุณาออกจากระบบแล้วเข้าสู่ระบบใหม่');
+    }
+    if (empty($_SESSION['is_admin']) && empty($_SESSION['is_activity_admin'])) {
+        throw new RuntimeException('คุณไม่มีสิทธิ์ผู้ดูแลระบบกิจกรรม');
     }
     return trim($_SESSION['teacher_name'] ?? $_SESSION['username']);
 }
@@ -1398,6 +1580,62 @@ function adminUpdateStudentRecord($studentId, $data, $pdo) {
         writeStudentRosterChange($pdo, $studentId, 'update', $old, $new, '', $adminName);
         $pdo->commit();
         return ['success' => true, 'message' => 'แก้ไขข้อมูลนักเรียนเรียบร้อยแล้ว', 'student' => $new];
+    } catch (Exception $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        throw $e;
+    }
+}
+
+/**
+ * เปลี่ยนชั้น/ห้องนักเรียนหลายคนในภาคเรียนเดิม โดยไม่เปลี่ยนปีการศึกษา
+ * และไม่แตะต้องข้อมูลประวัติการเช็กชื่อ คะแนน หรือกิจกรรม
+ */
+function adminBulkMoveStudents($rows, $pdo) {
+    $adminName = requireAdminSession();
+    ensureAcademicYearSchema($pdo);
+    if (!is_array($rows) || count($rows) < 1) throw new InvalidArgumentException('ไม่พบรายการสำหรับย้ายห้อง');
+    if (count($rows) > 2000) throw new InvalidArgumentException('นำเข้าได้ไม่เกิน 2,000 รายการต่อครั้ง');
+
+    $normalized = [];
+    $seen = [];
+    foreach ($rows as $index => $row) {
+        if (!is_array($row)) throw new InvalidArgumentException('รูปแบบรายการแถวที่ ' . ($index + 1) . ' ไม่ถูกต้อง');
+        $studentId = validateStudentIdValue($row['studentId'] ?? ($row['student_id'] ?? ''));
+        $level = trim((string)($row['level'] ?? ''));
+        $room = trim((string)($row['room'] ?? ''));
+        if (!preg_match('/^ม\.[1-6]$/u', $level)) throw new InvalidArgumentException('ชั้นของแถวที่ ' . ($index + 1) . ' ต้องเป็น ม.1 ถึง ม.6');
+        if (!preg_match('/^[1-6]$/', $room)) throw new InvalidArgumentException('ห้องของแถวที่ ' . ($index + 1) . ' ต้องเป็น 1 ถึง 6');
+        if (isset($seen[$studentId])) throw new InvalidArgumentException('รหัสนักเรียนซ้ำในไฟล์: ' . $studentId);
+        $seen[$studentId] = true;
+        $normalized[] = ['studentId' => $studentId, 'level' => $level, 'room' => $room];
+    }
+
+    try {
+        $pdo->beginTransaction();
+        $find = $pdo->prepare("SELECT no, student_id, name, level, room, is_active, academic_year FROM students WHERE student_id = ? FOR UPDATE");
+        $checkTarget = $pdo->prepare("SELECT COUNT(*) FROM students WHERE is_active = 1 AND level = ? AND room = ? AND no = ? AND student_id <> ?");
+        $update = $pdo->prepare("UPDATE students SET level = ?, room = ? WHERE student_id = ?");
+        $clubUpdate = $pdo->prepare("UPDATE club_members SET level = ?, room = ? WHERE student_id = ?");
+        $changed = 0; $unchanged = 0; $missing = [];
+        foreach ($normalized as $item) {
+            $find->execute([$item['studentId']]);
+            $old = $find->fetch();
+            if (!$old) { $missing[] = $item['studentId']; continue; }
+            if ((string)$old['level'] === $item['level'] && (string)$old['room'] === $item['room']) { $unchanged++; continue; }
+            if ((int)$old['is_active'] === 1) {
+                $checkTarget->execute([$item['level'], $item['room'], $old['no'], $item['studentId']]);
+                if ((int)$checkTarget->fetchColumn() > 0) {
+                    throw new RuntimeException('เลขที่ ' . $old['no'] . ' มีนักเรียนใช้งานอยู่แล้วใน ' . $item['level'] . '/' . $item['room'] . ' (' . $item['studentId'] . ')');
+                }
+            }
+            $update->execute([$item['level'], $item['room'], $item['studentId']]);
+            $clubUpdate->execute([$item['level'], $item['room'], $item['studentId']]);
+            $new = array_merge($old, ['level' => $item['level'], 'room' => $item['room']]);
+            writeStudentRosterChange($pdo, $item['studentId'], 'bulk_room_move', $old, $new, 'ปรับห้องจำนวนมากโดยไม่เปลี่ยนปีการศึกษา', $adminName);
+            $changed++;
+        }
+        $pdo->commit();
+        return ['success' => true, 'changedCount' => $changed, 'unchangedCount' => $unchanged, 'missingStudentIds' => $missing, 'message' => 'ปรับชั้น/ห้องเรียบร้อยแล้ว โดยไม่เปลี่ยนปีการศึกษาและไม่ลบประวัติเดิม'];
     } catch (Exception $e) {
         if ($pdo->inTransaction()) $pdo->rollBack();
         throw $e;
@@ -3042,9 +3280,30 @@ function getAdminMembersByRoom($level, $room, $pdo) {
 
 function addClubAdminRole($username, $pdo) {
     try {
+        requireAdminSession();
+        $username = trim((string)$username);
+        $check = $pdo->prepare("SELECT COUNT(*) FROM users WHERE username = ?");
+        $check->execute([$username]);
+        if (!(int)$check->fetchColumn()) throw new InvalidArgumentException('ไม่พบบัญชีครูที่เลือก');
         $stmt = $pdo->prepare("INSERT INTO club_admins (username) VALUES (?) ON DUPLICATE KEY UPDATE username = username");
-        $stmt->execute([trim($username)]);
+        $stmt->execute([$username]);
         return ['success' => true, 'message' => "เพิ่มสิทธิ์ให้ครูท่านนี้เป็นผู้ดูแลระบบชุมนุมเรียบร้อยแล้ว!"];
+    } catch (Exception $e) {
+        return ['success' => false, 'message' => $e->getMessage()];
+    }
+}
+
+function addActivityAdminRole($username, $pdo) {
+    try {
+        requireAdminSession();
+        ensureActivityAdminSchema($pdo);
+        $username = trim((string)$username);
+        $check = $pdo->prepare("SELECT COUNT(*) FROM users WHERE username = ?");
+        $check->execute([$username]);
+        if (!(int)$check->fetchColumn()) throw new InvalidArgumentException('ไม่พบบัญชีครูที่เลือก');
+        $stmt = $pdo->prepare("INSERT INTO activity_admins (username) VALUES (?) ON DUPLICATE KEY UPDATE username = username");
+        $stmt->execute([$username]);
+        return ['success' => true, 'message' => 'เพิ่มสิทธิ์ให้ครูท่านนี้เป็นผู้ดูแลระบบกิจกรรมเรียบร้อยแล้ว กรุณาให้ครูออกจากระบบและเข้าสู่ระบบใหม่'];
     } catch (Exception $e) {
         return ['success' => false, 'message' => $e->getMessage()];
     }
@@ -3053,6 +3312,14 @@ function addClubAdminRole($username, $pdo) {
 function checkIfClubAdmin($username, $pdo) {
     if (!$username) return false;
     $stmt = $pdo->prepare("SELECT COUNT(*) FROM club_admins WHERE username = ?");
+    $stmt->execute([trim($username)]);
+    return ($stmt->fetchColumn() > 0);
+}
+
+function checkIfActivityAdmin($username, $pdo) {
+    if (!$username) return false;
+    ensureActivityAdminSchema($pdo);
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM activity_admins WHERE username = ?");
     $stmt->execute([trim($username)]);
     return ($stmt->fetchColumn() > 0);
 }
