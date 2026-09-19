@@ -52,6 +52,94 @@ if (roster[1][1] !== '74001') throw new Error('SheetJS roster round-trip failed'
 ['rosterManageTable', 'loadManagedRoster', 'toggleManagedStudent'].forEach(required => {
   if (!html.includes(required)) throw new Error(`Missing roster UI: ${required}`);
 });
+['adminUpdateTeacherAssignment', 'requireAdminSession()', 'advisory_room = ?, head_level = ?'].forEach(required => {
+  if (!apiSource.includes(required)) throw new Error(`Missing secure teacher assignment API: ${required}`);
+});
+['teacherAssignmentModal', 'openTeacherAssignmentEditor', 'saveTeacherAssignment'].forEach(required => {
+  if (!html.includes(required)) throw new Error(`Missing teacher assignment UI: ${required}`);
+});
+[
+  'ensureActivitySchema',
+  'adminCreateActivity',
+  'adminCreateActivitiesBulk',
+  'adminGetActivityReport',
+  'getActivityReportForTeacher',
+  'adminListActivities',
+  'adminSetActivityStatus',
+  'getActivitiesForTeacher',
+  'getActivityStudents',
+  'saveActivityAttendance',
+  'activity_attendance',
+  'requireTeacherSession',
+  'getCurrentTeacherPermissions',
+  'canCurrentTeacherAccess',
+  'canCurrentTeacherAccessActivityClass',
+  'idx_activity_period',
+  'academic_year, semester',
+  'กรุณาบันทึกสถานะนักเรียนให้ครบทั้งห้อง',
+  "['เข้าร่วม', 'ลา (มีใบรับรองแพทย์)', 'ไม่เข้าร่วมกิจกรรม']"
+].forEach(required => {
+  if (!apiSource.includes(required)) throw new Error(`Missing activity API: ${required}`);
+});
+[
+  'nav-activity',
+  'activitySection',
+  'adminActivityTable',
+  'loadTeacherActivities',
+  'loadActivityStudents',
+  'saveActivityCheck',
+  'loadAdminActivities'
+].forEach(required => {
+  if (!html.includes(required)) throw new Error(`Missing activity UI: ${required}`);
+});
+['adminActivityBulkRows', 'addAdminActivityBulkRow', 'saveAdminActivitiesBulk', 'บันทึกกิจกรรมทั้งหมด'].forEach(required => {
+  if (!html.includes(required)) throw new Error(`Missing bulk activity UI: ${required}`);
+});
+['getActivityMatrix', 'saveActivityMatrix', 'renderActivityMatrix', 'activity-matrix-status', 'renderActivityMatrixReportTable'].forEach(required => {
+  if (!apiSource.includes(required) && !html.includes(required)) throw new Error(`Missing activity matrix support: ${required}`);
+});
+['adminActivityReportTable', 'loadAdminActivityReport', 'รายชื่อกิจกรรมทั้งหมด', 'เกณฑ์ผ่านต้องเข้าร่วมอย่างน้อย 80%'].forEach(required => {
+  if (!html.includes(required)) throw new Error(`Missing activity report UI: ${required}`);
+});
+['advisorActivityReportTable', 'loadAdvisorActivityReport', 'รายงานกิจกรรมห้องที่ปรึกษา', 'เช็กและดูรายงานได้เฉพาะห้องนี้'].forEach(required => {
+  if (!html.includes(required)) throw new Error(`Missing advisor activity report UI: ${required}`);
+});
+['quickActivityCheck', 'openAdvisorActivityReport', 'advisorActivityReportCard'].forEach(required => {
+  if (!html.includes(required)) throw new Error(`Missing activity quick menu: ${required}`);
+});
+['activityAcademicYear', 'activitySemester', 'adminActivityAcademicYear', 'adminActivityReportYear', 'adminActivityReportSemester'].forEach(required => {
+  if (!html.includes(required)) throw new Error(`Missing activity period filter: ${required}`);
+});
+['resolveAcademicPeriod', 'academicPeriodBounds', 'datetime BETWEEN ? AND ?'].forEach(required => {
+  if (!apiSource.includes(required)) throw new Error(`Missing global academic period API support: ${required}`);
+});
+['getCurrentAcademicPeriod', 'adminSetAcademicPeriod', 'current_semester', 'requireAdminSession()'].forEach(required => {
+  if (!apiSource.includes(required)) throw new Error(`Missing admin-controlled academic period API: ${required}`);
+});
+['globalAcademicYear', 'globalSemester', 'changeGlobalAcademicPeriod', 'makudmuang_academic_period'].forEach(required => {
+  if (!html.includes(required)) throw new Error(`Missing global academic period UI support: ${required}`);
+});
+['academicPeriodSaveButton', 'applyAcademicPeriodToUi', 'เฉพาะผู้ดูแลระบบเท่านั้นที่กำหนดปีการศึกษาและภาคเรียนได้'].forEach(required => {
+  if (!html.includes(required)) throw new Error(`Missing admin-only academic period UI: ${required}`);
+});
+const activityApiBlock = apiSource.slice(
+  apiSource.indexOf('function saveActivityAttendance'),
+  apiSource.indexOf('function adminUpdateTeacherAssignment')
+);
+const activityUiBlock = html.slice(
+  html.indexOf('function renderActivityStudents'),
+  html.indexOf('function checkAndLoadAtt')
+);
+['เข้าร่วม', 'ลา (มีใบรับรองแพทย์)', 'ไม่เข้าร่วมกิจกรรม'].forEach(status => {
+  if (!activityApiBlock.includes(status)) throw new Error(`Activity API status is missing: ${status}`);
+  if (!activityUiBlock.includes(status)) throw new Error(`Activity UI status is missing: ${status}`);
+});
+if (activityApiBlock.includes("'มาสาย'") || activityApiBlock.includes("'ไม่เข้าร่วม', 'ลา'")) {
+  throw new Error('Legacy activity statuses must not be accepted by the API');
+}
+if (activityUiBlock.includes("'มาสาย'") || activityUiBlock.includes("'ไม่เข้าร่วม':")) {
+  throw new Error('Legacy activity statuses must not appear in the activity UI');
+}
 if (!apiSource.includes('name, level, room, avatar, is_active')) {
   throw new Error('Roster API must return the student avatar');
 }
@@ -67,5 +155,14 @@ if (!html.includes('Array.from({length:6}') || !html.includes("errors.push('ห�
 if (/id="rosterManageRoom"[\s\S]*?<\/select>/.exec(html)?.[0].includes('value="7"')) {
   throw new Error('Roster room selector must not offer room 7');
 }
+['getLocalDateValue', 'refreshDateAfterMidnight', 'setInterval(refreshDateAfterMidnight, 60000)'].forEach(required => {
+  if (!html.includes(required)) throw new Error(`Missing automatic date rollover support: ${required}`);
+});
+['ensureDateInSelectedAcademicPeriod', 'return currentAcademicPeriod($pdo)', 'กิจกรรมนี้ไม่ได้อยู่ในภาคเรียนที่เลือก'].forEach(required => {
+  if (!apiSource.includes(required)) throw new Error(`Missing selected-term API enforcement: ${required}`);
+});
+['applyAcademicPeriodDateLimits', "input.min = range.start", "input.max = range.end"].forEach(required => {
+  if (!html.includes(required)) throw new Error(`Missing selected-term date controls: ${required}`);
+});
 
 console.log(`Syntax OK + Excel round-trip: api.php, google-mock.js, teacher.html (${scripts.length} inline scripts)`);

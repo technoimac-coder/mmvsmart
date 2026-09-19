@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>ตัวอย่างระบบเช็กกิจกรรม - MMV Smart Class</title>
+  <style>
+    *{box-sizing:border-box} body{margin:0;font-family:Tahoma,"Noto Sans Thai",sans-serif;background:#f4f7fb;color:#17223b}
+    .app{min-height:100vh;display:grid;grid-template-columns:260px 1fr}.side{background:linear-gradient(180deg,#111f46,#233876);color:#fff;padding:24px 18px}.brand{display:flex;align-items:center;gap:12px;margin-bottom:28px}.brand img{width:48px;height:48px;object-fit:contain;background:#fff;border-radius:50%;padding:3px}.brand b{display:block;font-size:18px}.brand small{opacity:.72}.nav{padding:13px 14px;border-radius:12px;margin:8px 0;color:#dfe6ff}.nav.active{background:#fff;color:#4c35b5;font-weight:700;box-shadow:0 8px 22px #101a3f55}
+    main{padding:26px;max-width:1180px;width:100%;margin:auto}.top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:20px}.top h1{font-size:25px;margin:0}.pill{background:#ede9fe;color:#6d28d9;border:1px solid #c4b5fd;border-radius:999px;padding:8px 14px;font-weight:700}.card{background:#fff;border-radius:18px;box-shadow:0 10px 30px #1e2d5812;padding:20px;margin-bottom:18px}.activity{border-left:6px solid #7c3aed}.row{display:grid;grid-template-columns:2.2fr 1fr 1fr auto;gap:12px;margin-top:18px}.field label{display:block;font-size:12px;color:#60708f;font-weight:700;margin-bottom:6px}.field select,.field input{width:100%;height:43px;border:1px solid #d8deea;border-radius:10px;padding:0 11px;background:#fff;font-size:15px}.load{align-self:end;height:43px;border:0;border-radius:10px;background:#7c3aed;color:#fff;padding:0 20px;font-weight:700}.notice{margin-top:14px;background:#fff8dd;color:#705700;border-radius:10px;padding:11px 13px;font-size:14px}.detail{margin-top:12px;color:#64748b;font-size:14px}.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.stat{text-align:center;padding:14px}.stat small{display:block;color:#64748b}.stat strong{font-size:25px}.green{color:#16864a}.cyan{color:#0891b2}.red{color:#dc2626}.gray{color:#64748b}
+    .student{display:grid;grid-template-columns:70px 1fr;gap:15px;align-items:center;border-left:5px solid #7c3aed}.avatar{width:62px;height:76px;border-radius:12px;background:#ede9fe;display:grid;place-items:center;font-size:34px}.meta{color:#64748b;font-size:13px}.name{font-weight:700;margin:4px 0 10px}.statuses{display:flex;gap:7px;flex-wrap:wrap}.status{border:1px solid #cbd5e1;background:#fff;color:#475569;border-radius:9px;padding:8px 12px;cursor:pointer;font-weight:700}.status.active[data-status="เข้าร่วม"]{background:#198754;border-color:#198754;color:white}.status.active[data-status^="ลา"]{background:#0dcaf0;border-color:#0dcaf0;color:#083344}.status.active[data-status^="ไม่เข้าร่วม"]{background:#dc3545;border-color:#dc3545;color:white}.note{margin-top:9px;width:100%;border:1px solid #d8deea;border-radius:9px;padding:9px}.save{width:100%;border:0;border-radius:12px;background:#7c3aed;color:#fff;padding:14px;font-size:16px;font-weight:700;box-shadow:0 8px 20px #7c3aed45}.demo{font-size:12px;color:#64748b;text-align:center;margin-top:12px}
+    @media(max-width:760px){.app{grid-template-columns:1fr}.side{display:none}main{padding:14px}.top{align-items:flex-start}.top h1{font-size:20px}.row{grid-template-columns:1fr 1fr}.row .field:first-child{grid-column:1/-1}.load{grid-column:1/-1}.summary{grid-template-columns:1fr 1fr}.student{grid-template-columns:54px 1fr;padding:14px}.avatar{width:50px;height:62px}.status{flex:1;min-width:130px;font-size:12px}}
+  </style>
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <div class="brand"><img src="../logo.png" alt="ตราโรงเรียน"><div><b>MMV SMART CLASS</b><small>ระบบครูและผู้ดูแล</small></div></div>
+    <div class="nav">🏠 แดชบอร์ด</div><div class="nav">📅 เช็กชื่อเข้าเรียน</div><div class="nav active">📋 เช็กชื่อกิจกรรม</div><div class="nav">📊 รายงานภาพรวม</div><div class="nav">⚙️ ผู้ดูแลระบบ</div>
+  </aside>
+  <main>
+    <div class="top"><div><h1>📋 เช็กชื่อกิจกรรม</h1><div class="meta">ตัวอย่างหน้าจอสำหรับครูที่ปรึกษา</div></div><span class="pill">โหมดตัวอย่าง</span></div>
+    <section class="card activity">
+      <b style="color:#6d28d9;font-size:18px">กิจกรรมของโรงเรียน</b>
+      <div class="notice">สิทธิ์ครูที่ปรึกษา: ม.4/6 — เลือกดูและบันทึกได้เฉพาะห้องที่ได้รับมอบหมาย</div>
+      <div class="row">
+        <div class="field"><label>กิจกรรม</label><select><option>วันไหว้ครู ประจำปีการศึกษา 2569</option></select></div>
+        <div class="field"><label>ชั้น</label><select disabled><option>ม.4</option></select></div>
+        <div class="field"><label>ห้อง</label><select disabled><option>6</option></select></div>
+        <button class="load">โหลดรายชื่อ</button>
+      </div>
+      <div class="detail">18 มิถุนายน 2569 เวลา 08:30 น. · เป้าหมาย: ม.4/6 · หอประชุมโรงเรียน</div>
+    </section>
+    <section class="summary">
+      <div class="card stat"><small>เข้าร่วม</small><strong class="green" id="joined">1</strong></div>
+      <div class="card stat"><small>ลา (มีใบรับรองแพทย์)</small><strong class="cyan" id="leave">1</strong></div>
+      <div class="card stat"><small>ไม่เข้าร่วมกิจกรรม</small><strong class="red" id="absent">1</strong></div>
+      <div class="card stat"><small>ยังไม่เช็ก</small><strong class="gray" id="unchecked">0</strong></div>
+    </section>
+    <div id="students"></div>
+    <button class="save" onclick="alert('ตัวอย่างเท่านั้น — ยังไม่มีการบันทึกข้อมูลจริง')">บันทึกการเช็กกิจกรรม</button>
+    <div class="demo">ข้อมูลทั้งหมดในหน้านี้เป็นข้อมูลสมมติ และไม่เชื่อมต่อฐานข้อมูลจริง</div>
+  </main>
+</div>
+<script>
+  const data=[
+    {no:1,id:'D001',name:'นายตัวอย่าง หนึ่ง',status:'เข้าร่วม'},
+    {no:2,id:'D002',name:'นางสาวตัวอย่าง สอง',status:'ลา (มีใบรับรองแพทย์)'},
+    {no:3,id:'D003',name:'นายตัวอย่าง สาม',status:'ไม่เข้าร่วมกิจกรรม'}
+  ];
+  const statuses=['เข้าร่วม','ลา (มีใบรับรองแพทย์)','ไม่เข้าร่วมกิจกรรม'];
+  function render(){document.getElementById('students').innerHTML=data.map((s,i)=>`<section class="card student"><div class="avatar">🧑‍🎓</div><div><div class="meta">เลขที่ ${s.no} · รหัส ${s.id}</div><div class="name">${s.name}</div><div class="statuses">${statuses.map(x=>`<button class="status ${s.status===x?'active':''}" data-status="${x}" onclick="pick(${i},this.dataset.status)">${x}</button>`).join('')}</div><input class="note" placeholder="หมายเหตุ (ถ้ามี)"></div></section>`).join('');update()}
+  function pick(index,status){data[index].status=status;render()}
+  function update(){const c=Object.fromEntries(statuses.map(x=>[x,0]));let u=0;data.forEach(s=>s.status?c[s.status]++:u++);joined.textContent=c[statuses[0]];leave.textContent=c[statuses[1]];absent.textContent=c[statuses[2]];unchecked.textContent=u}
+  render();
+</script>
+</body>
+</html>
