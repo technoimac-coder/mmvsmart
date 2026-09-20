@@ -3513,6 +3513,14 @@
     let attendanceCalendarMonthIndex = 0;
     let attendanceCalendarDayMap = {};
 
+    function attendanceCalendarDisplayName(fullName) {
+      const parts = String(fullName || '').trim().split(/\s+/).filter(Boolean);
+      if (!parts.length) return '';
+      const titles = /^(นาย|นางสาว|นาง|เด็กชาย|เด็กหญิง|น\.ส\.|ด\.ช\.|ด\.ญ\.)$/;
+      if (titles.test(parts[0]) && parts.length > 1) parts.shift();
+      return parts[0] || '';
+    }
+
     function renderAttendanceCalendarMonth() {
       const monthLabel = document.getElementById('attendanceCalendarMonthLabel');
       const calendarBody = document.getElementById('attendanceCalendarDays');
@@ -3529,7 +3537,7 @@
         const summary = attendanceCalendarDayMap[date];
         const absentNames = summary && Array.isArray(summary.absentStudents) ? summary.absentStudents : [];
         const details = absentNames.length
-          ? `<div class="text-danger text-start mt-1" style="font-size:.72rem;line-height:1.15">${[...new Set(absentNames)].map(name => activityEscape(name)).join('<br>')}</div>`
+          ? `<div class="text-danger text-start mt-1" style="font-size:.72rem;line-height:1.15">${[...new Set(absentNames.map(attendanceCalendarDisplayName).filter(Boolean))].map(name => activityEscape(name)).join('<br>')}</div>`
           : '';
         cells.push(`<td class="p-1 ${summary ? 'bg-white' : 'bg-light'}" style="min-height:52px; min-width:72px; vertical-align:top"><div class="fw-bold small">${dayNo}</div>${details}</td>`);
       }
@@ -3561,7 +3569,7 @@
         renderAttendanceCalendarMonth();
         if (alerts.length) {
           alertBox.classList.remove('d-none');
-          const alertNames = [...new Set(alerts.map(a => activityEscape(a.name)))];
+          const alertNames = [...new Set(alerts.map(a => attendanceCalendarDisplayName(a.name)).filter(Boolean))].map(activityEscape);
           alertBox.innerHTML = `<b>⚠️ แจ้งเตือนครูที่ปรึกษา:</b><br>${alertNames.join('<br>')}`;
         } else { alertBox.classList.add('d-none'); alertBox.textContent = ''; }
       }).withFailureHandler(() => card.classList.add('d-none'))
