@@ -3529,9 +3529,9 @@
         const summary = attendanceCalendarDayMap[date];
         const absentNames = summary && Array.isArray(summary.absentStudents) ? summary.absentStudents : [];
         const details = absentNames.length
-          ? `<div class="small text-danger text-start mt-1">${[...new Set(absentNames)].map(name => activityEscape(name)).join('<br>')}</div>`
+          ? `<div class="text-danger text-start mt-1" style="font-size:.72rem;line-height:1.15">${[...new Set(absentNames)].map(name => activityEscape(name)).join('<br>')}</div>`
           : '';
-        cells.push(`<td class="p-1 ${summary ? 'bg-white' : 'bg-light'}" style="height:82px; min-width:72px; vertical-align:top"><div class="fw-bold small">${dayNo}</div>${details}</td>`);
+        cells.push(`<td class="p-1 ${summary ? 'bg-white' : 'bg-light'}" style="min-height:52px; min-width:72px; vertical-align:top"><div class="fw-bold small">${dayNo}</div>${details}</td>`);
       }
       while (cells.length % 7) cells.push('<td class="bg-light"></td>');
       const weeks = [];
@@ -3561,7 +3561,8 @@
         renderAttendanceCalendarMonth();
         if (alerts.length) {
           alertBox.classList.remove('d-none');
-          alertBox.innerHTML = `<b>⚠️ แจ้งเตือนครูที่ปรึกษา:</b> ${alerts.slice(0, 5).map(a => `${activityEscape(a.name)} ขาดเรียนติดต่อกัน ${Number(a.days)} วัน (${activityEscape(a.from)} ถึง ${activityEscape(a.to)})`).join('<br>')}${alerts.length > 5 ? `<br><small>และอีก ${alerts.length - 5} รายการ</small>` : ''}`;
+          const alertNames = [...new Set(alerts.map(a => activityEscape(a.name)))];
+          alertBox.innerHTML = `<b>⚠️ แจ้งเตือนครูที่ปรึกษา:</b><br>${alertNames.join('<br>')}`;
         } else { alertBox.classList.add('d-none'); alertBox.textContent = ''; }
       }).withFailureHandler(() => card.classList.add('d-none'))
         .getAttendanceCalendar(teacherName, advisoryRoom, period.academicYear, period.semester, false);
