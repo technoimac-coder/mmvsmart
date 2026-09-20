@@ -768,11 +768,21 @@
             <div id="attendanceCalendarCard" class="card border-0 shadow-sm mb-4 d-none">
               <div class="card-body">
                 <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
-                  <h6 class="fw-bold mb-0"><i class="fas fa-calendar-check text-primary me-1"></i> ปฏิทินการเช็คชื่อ</h6>
+                  <h6 class="fw-bold mb-0"><i class="fas fa-calendar-check text-primary me-1"></i> ปฏิทินเช็คชื่อห้องที่ปรึกษา</h6>
                   <span id="attendanceCalendarPeriod" class="small text-muted"></span>
                 </div>
                 <div id="attendanceStreakAlert" class="alert alert-danger py-2 d-none mb-3"></div>
-                <div id="attendanceCalendarGrid" class="row row-cols-2 row-cols-md-4 row-cols-lg-6 g-2"></div>
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                  <button type="button" class="btn btn-sm btn-outline-secondary" id="attendanceCalendarPrev" aria-label="เดือนก่อนหน้า"><i class="fas fa-chevron-left"></i></button>
+                  <strong id="attendanceCalendarMonthLabel" class="text-primary"></strong>
+                  <button type="button" class="btn btn-sm btn-outline-secondary" id="attendanceCalendarNext" aria-label="เดือนถัดไป"><i class="fas fa-chevron-right"></i></button>
+                </div>
+                <div id="attendanceCalendarGrid" class="table-responsive">
+                  <table class="table table-bordered table-sm text-center align-middle mb-0" aria-label="ปฏิทินการเช็คชื่อ">
+                    <thead class="table-light"><tr><th>อา.</th><th>จ.</th><th>อ.</th><th>พ.</th><th>พฤ.</th><th>ศ.</th><th>ส.</th></tr></thead>
+                    <tbody id="attendanceCalendarDays"></tbody>
+                  </table>
+                </div>
               </div>
             </div>
 
@@ -3499,30 +3509,65 @@
       }
     }
 
+    let attendanceCalendarMonths = [];
+    let attendanceCalendarMonthIndex = 0;
+    let attendanceCalendarDayMap = {};
+
+    function renderAttendanceCalendarMonth() {
+      const monthLabel = document.getElementById('attendanceCalendarMonthLabel');
+      const calendarBody = document.getElementById('attendanceCalendarDays');
+      if (!monthLabel || !calendarBody || !attendanceCalendarMonths.length) return;
+      const monthKey = attendanceCalendarMonths[attendanceCalendarMonthIndex];
+      const [year, month] = monthKey.split('-').map(Number);
+      monthLabel.textContent = new Date(year, month - 1, 1).toLocaleDateString('th-TH', { month: 'long', year: 'numeric' });
+      const firstWeekday = new Date(year, month - 1, 1).getDay();
+      const daysInMonth = new Date(year, month, 0).getDate();
+      const cells = [];
+      for (let i = 0; i < firstWeekday; i++) cells.push('<td class="bg-light"></td>');
+      for (let dayNo = 1; dayNo <= daysInMonth; dayNo++) {
+        const date = `${year}-${String(month).padStart(2, '0')}-${String(dayNo).padStart(2, '0')}`;
+        const summary = attendanceCalendarDayMap[date];
+        const details = summary
+          ? `<div class="small text-success">มา ${Number(summary['มาเรียน'] || 0)}</div><div class="small text-warning">สาย ${Number(summary['มาสาย'] || 0)}</div><div class="small text-danger">ขาด ${Number(summary['ขาดเรียน'] || 0)}</div>`
+          : '';
+        cells.push(`<td class="p-1 ${summary ? 'bg-white' : 'bg-light'}" style="height:82px; min-width:72px; vertical-align:top"><div class="fw-bold small">${dayNo}</div>${details}</td>`);
+      }
+      while (cells.length % 7) cells.push('<td class="bg-light"></td>');
+      const weeks = [];
+      for (let i = 0; i < cells.length; i += 7) weeks.push(`<tr>${cells.slice(i, i + 7).join('')}</tr>`);
+      calendarBody.innerHTML = weeks.join('');
+      document.getElementById('attendanceCalendarPrev').disabled = attendanceCalendarMonthIndex <= 0;
+      document.getElementById('attendanceCalendarNext').disabled = attendanceCalendarMonthIndex >= attendanceCalendarMonths.length - 1;
+    }
+
     function loadAttendanceCalendar() {
       const card = document.getElementById('attendanceCalendarCard');
-      const grid = document.getElementById('attendanceCalendarGrid');
       const alertBox = document.getElementById('attendanceStreakAlert');
       const periodLabel = document.getElementById('attendanceCalendarPeriod');
-      if (!card || !grid || !teacherName) return;
+      if (!card || !teacherName || !advisoryRoom) { card?.classList.add('d-none'); return; }
       const period = getGlobalAcademicPeriod();
       google.script.run.withSuccessHandler(res => {
         const days = (res && res.days) || [];
         const alerts = (res && res.alerts) || [];
         if (!days.length) { card.classList.add('d-none'); return; }
         card.classList.remove('d-none');
-        periodLabel.textContent = `ปี ${res.academicYear} · ภาคเรียนที่ ${res.semester}`;
-        grid.innerHTML = days.slice(-30).reverse().map(day => {
-          const dateText = new Date(`${day.date}T00:00:00`).toLocaleDateString('th-TH', { day:'numeric', month:'short' });
-          return `<div class="col"><div class="border rounded-3 p-2 h-100 bg-light"><div class="fw-bold small mb-1">${activityEscape(dateText)}</div><div class="small text-success">มา ${Number(day['มาเรียน'] || 0)}</div><div class="small text-warning">สาย ${Number(day['มาสาย'] || 0)}</div><div class="small text-danger">ขาด ${Number(day['ขาดเรียน'] || 0)}</div></div></div>`;
-        }).join('');
+        periodLabel.textContent = `${advisoryRoom} · ปี ${res.academicYear} · ภาคเรียนที่ ${res.semester}`;
+        attendanceCalendarDayMap = Object.fromEntries(days.map(day => [day.date, day]));
+        attendanceCalendarMonths = [...new Set(days.map(day => day.date.slice(0, 7)))].sort();
+        const nowMonth = new Date().toISOString().slice(0, 7);
+        attendanceCalendarMonthIndex = Math.max(0, attendanceCalendarMonths.indexOf(nowMonth));
+        if (!attendanceCalendarMonths.includes(nowMonth)) attendanceCalendarMonthIndex = attendanceCalendarMonths.length - 1;
+        renderAttendanceCalendarMonth();
         if (alerts.length) {
           alertBox.classList.remove('d-none');
           alertBox.innerHTML = `<b>⚠️ แจ้งเตือนครูที่ปรึกษา:</b> ${alerts.slice(0, 5).map(a => `${activityEscape(a.name)} ขาดเรียนติดต่อกัน ${Number(a.days)} วัน (${activityEscape(a.from)} ถึง ${activityEscape(a.to)})`).join('<br>')}${alerts.length > 5 ? `<br><small>และอีก ${alerts.length - 5} รายการ</small>` : ''}`;
         } else { alertBox.classList.add('d-none'); alertBox.textContent = ''; }
       }).withFailureHandler(() => card.classList.add('d-none'))
-        .getAttendanceCalendar(teacherName, advisoryRoom, period.academicYear, period.semester, isAdminUser);
+        .getAttendanceCalendar(teacherName, advisoryRoom, period.academicYear, period.semester, false);
     }
+
+    document.getElementById('attendanceCalendarPrev')?.addEventListener('click', () => { if (attendanceCalendarMonthIndex > 0) { attendanceCalendarMonthIndex--; renderAttendanceCalendarMonth(); } });
+    document.getElementById('attendanceCalendarNext')?.addEventListener('click', () => { if (attendanceCalendarMonthIndex < attendanceCalendarMonths.length - 1) { attendanceCalendarMonthIndex++; renderAttendanceCalendarMonth(); } });
 
     function searchStudentVolunteer() {
       const searchVal = document.getElementById('searchStuIdVol').value.trim();

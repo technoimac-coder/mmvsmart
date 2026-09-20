@@ -3301,18 +3301,24 @@ function addClubAdminRole($username, $pdo) {
  * teacher's advisory room.  Dates are scoped to the selected academic period.
  */
 function getAttendanceCalendar($teacherName, $advisoryRoom, $academicYear, $semester, $isAdmin, $pdo) {
+    // Always derive the scope from the authenticated account; never allow an
+    // administrator flag or client-supplied room to widen this dashboard view.
+    $teacherName = requireTeacherSession($teacherName);
+    $currentUser = getCurrentTeacherPermissions($pdo);
+    $advisoryRoom = trim((string)($currentUser['advisory_room'] ?? ''));
+    if ($advisoryRoom === '') {
+        return ['success' => true, 'academicYear' => $academicYear, 'semester' => $semester, 'days' => [], 'alerts' => []];
+    }
     [$academicYear, $semester, $periodStart, $periodEnd] = academicPeriodBounds($academicYear, $semester, $pdo);
     $parts = explode('/', (string)$advisoryRoom, 2);
     $params = [$periodStart, $periodEnd];
     $where = 'a.date BETWEEN ? AND ?';
-    if (!$isAdmin) {
-        if (count($parts) !== 2 || $parts[0] === '' || $parts[1] === '') {
-            return ['success' => true, 'academicYear' => $academicYear, 'semester' => $semester, 'days' => [], 'alerts' => []];
-        }
-        $where .= ' AND a.level = ? AND a.room = ?';
-        $params[] = $parts[0];
-        $params[] = $parts[1];
+    if (count($parts) !== 2 || $parts[0] === '' || $parts[1] === '') {
+        return ['success' => true, 'academicYear' => $academicYear, 'semester' => $semester, 'days' => [], 'alerts' => []];
     }
+    $where .= ' AND a.level = ? AND a.room = ?';
+    $params[] = $parts[0];
+    $params[] = $parts[1];
     $stmt = $pdo->prepare("SELECT a.date, a.student_id, a.name, a.level, a.room, a.status
         FROM attendance a WHERE {$where} ORDER BY a.date ASC, a.student_id ASC");
     $stmt->execute($params);
