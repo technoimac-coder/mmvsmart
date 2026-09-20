@@ -3527,8 +3527,9 @@
       for (let dayNo = 1; dayNo <= daysInMonth; dayNo++) {
         const date = `${year}-${String(month).padStart(2, '0')}-${String(dayNo).padStart(2, '0')}`;
         const summary = attendanceCalendarDayMap[date];
-        const details = summary
-          ? `<div class="small text-success">มา ${Number(summary['มาเรียน'] || 0)}</div><div class="small text-warning">สาย ${Number(summary['มาสาย'] || 0)}</div><div class="small text-danger">ขาด ${Number(summary['ขาดเรียน'] || 0)}</div>`
+        const absentNames = summary && Array.isArray(summary.absentStudents) ? summary.absentStudents : [];
+        const details = absentNames.length
+          ? `<div class="small text-danger text-start mt-1">${[...new Set(absentNames)].map(name => activityEscape(name)).join('<br>')}</div>`
           : '';
         cells.push(`<td class="p-1 ${summary ? 'bg-white' : 'bg-light'}" style="height:82px; min-width:72px; vertical-align:top"><div class="fw-bold small">${dayNo}</div>${details}</td>`);
       }

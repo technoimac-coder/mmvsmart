@@ -3326,11 +3326,12 @@ function getAttendanceCalendar($teacherName, $advisoryRoom, $academicYear, $seme
     $absences = [];
     foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
         $date = (string)$row['date'];
-        if (!isset($days[$date])) $days[$date] = ['date' => $date, 'มาเรียน' => 0, 'มาสาย' => 0, 'ลากิจ' => 0, 'ลาป่วย' => 0, 'ขาดเรียน' => 0, 'เช็คชื่อแล้ว' => 0];
+        if (!isset($days[$date])) $days[$date] = ['date' => $date, 'มาเรียน' => 0, 'มาสาย' => 0, 'ลากิจ' => 0, 'ลาป่วย' => 0, 'ขาดเรียน' => 0, 'เช็คชื่อแล้ว' => 0, 'absentStudents' => []];
         $status = (string)$row['status'];
         if (array_key_exists($status, $days[$date])) $days[$date][$status]++;
         $days[$date]['เช็คชื่อแล้ว']++;
         if ($status === 'ขาดเรียน') {
+            $days[$date]['absentStudents'][] = (string)$row['name'];
             $sid = (string)$row['student_id'];
             if (!isset($absences[$sid])) $absences[$sid] = ['studentId' => $sid, 'name' => (string)$row['name'], 'level' => (string)$row['level'], 'room' => (string)$row['room'], 'dates' => []];
             $absences[$sid]['dates'][] = $date;
