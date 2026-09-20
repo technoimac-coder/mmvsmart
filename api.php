@@ -206,6 +206,9 @@ function routeAction($action, $args, $pdo) {
             
         case 'getReportData':
             return getReportData($args[0], $pdo);
+
+        case 'getAttendanceCalendar':
+            return getAttendanceCalendar($args[0] ?? '', $args[1] ?? '', $args[2] ?? '', $args[3] ?? '', (bool)($args[4] ?? false), $pdo);
             
         case 'getIndividualSummary':
             return getIndividualSummary($args[0], $args[1], $args[2], $args[3], $args[4], $pdo);
@@ -3291,6 +3294,57 @@ function addClubAdminRole($username, $pdo) {
     } catch (Exception $e) {
         return ['success' => false, 'message' => $e->getMessage()];
     }
+}
+
+/**
+ * Return a compact attendance calendar and consecutive-absence alerts for the
+ * teacher's advisory room.  Dates are scoped to the selected academic period.
+ */
+function getAttendanceCalendar($teacherName, $advisoryRoom, $academicYear, $semester, $isAdmin, $pdo) {
+    [$academicYear, $semester, $periodStart, $periodEnd] = academicPeriodBounds($academicYear, $semester, $pdo);
+    $parts = explode('/', (string)$advisoryRoom, 2);
+    $params = [$periodStart, $periodEnd];
+    $where = 'a.date BETWEEN ? AND ?';
+    if (!$isAdmin) {
+        if (count($parts) !== 2 || $parts[0] === '' || $parts[1] === '') {
+            return ['success' => true, 'academicYear' => $academicYear, 'semester' => $semester, 'days' => [], 'alerts' => []];
+        }
+        $where .= ' AND a.level = ? AND a.room = ?';
+        $params[] = $parts[0];
+        $params[] = $parts[1];
+    }
+    $stmt = $pdo->prepare("SELECT a.date, a.student_id, a.name, a.level, a.room, a.status
+        FROM attendance a WHERE {$where} ORDER BY a.date ASC, a.student_id ASC");
+    $stmt->execute($params);
+    $days = [];
+    $absences = [];
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $date = (string)$row['date'];
+        if (!isset($days[$date])) $days[$date] = ['date' => $date, 'มาเรียน' => 0, 'มาสาย' => 0, 'ลากิจ' => 0, 'ลาป่วย' => 0, 'ขาดเรียน' => 0, 'เช็คชื่อแล้ว' => 0];
+        $status = (string)$row['status'];
+        if (array_key_exists($status, $days[$date])) $days[$date][$status]++;
+        $days[$date]['เช็คชื่อแล้ว']++;
+        if ($status === 'ขาดเรียน') {
+            $sid = (string)$row['student_id'];
+            if (!isset($absences[$sid])) $absences[$sid] = ['studentId' => $sid, 'name' => (string)$row['name'], 'level' => (string)$row['level'], 'room' => (string)$row['room'], 'dates' => []];
+            $absences[$sid]['dates'][] = $date;
+        }
+    }
+    $alerts = [];
+    foreach ($absences as $student) {
+        $dates = array_values(array_unique($student['dates']));
+        $run = [];
+        foreach ($dates as $date) {
+            $prev = $run ? end($run) : null;
+            $gap = $prev ? (int)((strtotime($date) - strtotime($prev)) / 86400) : 1;
+            // Friday-to-Monday is still consecutive school-day absence.
+            if (!$run || $gap <= 3) $run[] = $date; else $run = [$date];
+            if (count($run) >= 3) {
+                $alerts[] = ['studentId' => $student['studentId'], 'name' => $student['name'], 'level' => $student['level'], 'room' => $student['room'], 'from' => $run[0], 'to' => $date, 'days' => count($run)];
+            }
+        }
+    }
+    return ['success' => true, 'academicYear' => $academicYear, 'semester' => $semester, 'days' => array_values($days), 'alerts' => $alerts];
 }
 
 function addActivityAdminRole($username, $pdo) {

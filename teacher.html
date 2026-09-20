@@ -765,6 +765,17 @@
               </div>
             </div>
 
+            <div id="attendanceCalendarCard" class="card border-0 shadow-sm mb-4 d-none">
+              <div class="card-body">
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
+                  <h6 class="fw-bold mb-0"><i class="fas fa-calendar-check text-primary me-1"></i> ปฏิทินการเช็คชื่อ</h6>
+                  <span id="attendanceCalendarPeriod" class="small text-muted"></span>
+                </div>
+                <div id="attendanceStreakAlert" class="alert alert-danger py-2 d-none mb-3"></div>
+                <div id="attendanceCalendarGrid" class="row row-cols-2 row-cols-md-4 row-cols-lg-6 g-2"></div>
+              </div>
+            </div>
+
             <div class="row g-3 mb-4">
               <div class="col-6 col-md-4 col-lg-3">
                 <div class="card dash-action-btn bg-white text-center p-3 cursor-pointer h-100" onclick="switchTab('attendance')">
@@ -3417,6 +3428,7 @@
 
     function loadDashboardData() {
       const period = getGlobalAcademicPeriod();
+      loadAttendanceCalendar();
       const tbodyVol = document.querySelector('#dashVolunteerTable tbody');
       tbodyVol.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4"><div class="spinner-border spinner-border-sm text-info me-2"></div>กำลังโหลดข้อมูล...</td></tr>';
       
@@ -3485,6 +3497,31 @@
           </tr>`).join('');
         }).getRoomRewardReport(level, room, teacherName, period.academicYear, period.semester);
       }
+    }
+
+    function loadAttendanceCalendar() {
+      const card = document.getElementById('attendanceCalendarCard');
+      const grid = document.getElementById('attendanceCalendarGrid');
+      const alertBox = document.getElementById('attendanceStreakAlert');
+      const periodLabel = document.getElementById('attendanceCalendarPeriod');
+      if (!card || !grid || !teacherName) return;
+      const period = getGlobalAcademicPeriod();
+      google.script.run.withSuccessHandler(res => {
+        const days = (res && res.days) || [];
+        const alerts = (res && res.alerts) || [];
+        if (!days.length) { card.classList.add('d-none'); return; }
+        card.classList.remove('d-none');
+        periodLabel.textContent = `ปี ${res.academicYear} · ภาคเรียนที่ ${res.semester}`;
+        grid.innerHTML = days.slice(-30).reverse().map(day => {
+          const dateText = new Date(`${day.date}T00:00:00`).toLocaleDateString('th-TH', { day:'numeric', month:'short' });
+          return `<div class="col"><div class="border rounded-3 p-2 h-100 bg-light"><div class="fw-bold small mb-1">${activityEscape(dateText)}</div><div class="small text-success">มา ${Number(day['มาเรียน'] || 0)}</div><div class="small text-warning">สาย ${Number(day['มาสาย'] || 0)}</div><div class="small text-danger">ขาด ${Number(day['ขาดเรียน'] || 0)}</div></div></div>`;
+        }).join('');
+        if (alerts.length) {
+          alertBox.classList.remove('d-none');
+          alertBox.innerHTML = `<b>⚠️ แจ้งเตือนครูที่ปรึกษา:</b> ${alerts.slice(0, 5).map(a => `${activityEscape(a.name)} ขาดเรียนติดต่อกัน ${Number(a.days)} วัน (${activityEscape(a.from)} ถึง ${activityEscape(a.to)})`).join('<br>')}${alerts.length > 5 ? `<br><small>และอีก ${alerts.length - 5} รายการ</small>` : ''}`;
+        } else { alertBox.classList.add('d-none'); alertBox.textContent = ''; }
+      }).withFailureHandler(() => card.classList.add('d-none'))
+        .getAttendanceCalendar(teacherName, advisoryRoom, period.academicYear, period.semester, isAdminUser);
     }
 
     function searchStudentVolunteer() {
