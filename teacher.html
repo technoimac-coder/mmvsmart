@@ -962,11 +962,12 @@
               </div>
             </div>
             <div id="reportContent" style="display:none;">
-              <div class="row g-2 mb-3">
-                <div class="col-3"><div class="stat-box bg-มาเรียน">มาเรียน<br><span class="fs-4" id="st-มาเรียน">0</span></div></div>
-                <div class="col-3"><div class="stat-box bg-ลากิจ">ลากิจ<br><span class="fs-4" id="st-ลากิจ">0</span></div></div>
-                <div class="col-3"><div class="stat-box bg-ลาป่วย">ลาป่วย<br><span class="fs-4" id="st-ลาป่วย">0</span></div></div>
-                <div class="col-3"><div class="stat-box bg-ขาดเรียน">ขาดเรียน<br><span class="fs-4" id="st-ขาดเรียน">0</span></div></div>
+              <div class="row row-cols-2 row-cols-md-5 g-2 mb-3">
+                <div class="col"><div class="stat-box bg-มาเรียน">มาเรียน<br><span class="fs-4" id="st-มาเรียน">0</span></div></div>
+                <div class="col"><div class="stat-box bg-ลากิจ">ลากิจ<br><span class="fs-4" id="st-ลากิจ">0</span></div></div>
+                <div class="col"><div class="stat-box bg-ลาป่วย">ลาป่วย<br><span class="fs-4" id="st-ลาป่วย">0</span></div></div>
+                <div class="col"><div class="stat-box bg-มาสาย">มาสาย<br><span class="fs-4" id="st-มาสาย">0</span></div></div>
+                <div class="col"><div class="stat-box bg-ขาดเรียน">ขาดเรียน<br><span class="fs-4" id="st-ขาดเรียน">0</span></div></div>
               </div>
               <div class="card p-3 mb-3"><div class="table-title">🏫 สรุประดับชั้นเรียน</div><div class="table-container"><table class="table table-bordered table-sm mb-0" id="tableGrades"><thead><tr><th>ชั้น</th><th>มาเรียน</th><th>ลากิจ</th><th>ลาป่วย</th><th>มาสาย</th><th>ขาดเรียน</th><th>เช็คชื่อแล้ว</th><th>ทั้งหมด</th></tr></thead><tbody></tbody></table></div></div>
               <div class="card p-3 mb-4"><div class="table-title">🚪 สรุปรายห้องเรียน</div><div class="table-container"><table class="table table-bordered table-sm mb-0" id="tableRooms"><thead><tr><th>ห้อง</th><th>มาเรียน</th><th>ลากิจ</th><th>ลาป่วย</th><th>มาสาย</th><th>ขาดเรียน</th><th>เช็คชื่อแล้ว</th><th>ทั้งหมด</th></tr></thead><tbody></tbody></table></div></div>
@@ -5147,7 +5148,7 @@ function loadTeachersForClub() {
       if(data.error) { Swal.fire('ผิดพลาด', data.error, 'error'); return; }
       if(data.overall['รวม'] === 0) { Swal.fire('แจ้งเตือน', 'ไม่พบข้อมูลสำหรับวันที่เลือก', 'info'); return; }
       globalOverallReportData = data;
-      document.getElementById('st-มาเรียน').innerText = data.overall['มาเรียน']; document.getElementById('st-ลากิจ').innerText = data.overall['ลากิจ']; document.getElementById('st-ลาป่วย').innerText = data.overall['ลาป่วย']; document.getElementById('st-ขาดเรียน').innerText = data.overall['ขาดเรียน'];
+      document.getElementById('st-มาเรียน').innerText = data.overall['มาเรียน']; document.getElementById('st-ลากิจ').innerText = data.overall['ลากิจ']; document.getElementById('st-ลาป่วย').innerText = data.overall['ลาป่วย']; document.getElementById('st-มาสาย').innerText = data.overall['มาสาย']; document.getElementById('st-ขาดเรียน').innerText = data.overall['ขาดเรียน'];
       let tbodyGrades = ""; Object.keys(data.grades).sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' })).forEach(g => { let d = data.grades[g]; tbodyGrades += `<tr><td><b>${g}</b></td><td class="text-success">${d['มาเรียน']}</td><td class="text-warning">${d['ลากิจ']}</td><td class="text-info">${d['ลาป่วย']}</td><td class="text-secondary">${d['มาสาย']}</td><td class="text-danger">${d['ขาดเรียน']}</td><td>${d['รวม']}</td><td><b>${d['ทั้งหมด']}</b></td></tr>`; }); document.querySelector('#tableGrades tbody').innerHTML = tbodyGrades;
       let tbodyRooms = ""; const roomSelect = document.getElementById('reportRoomSelect'); roomSelect.innerHTML = '<option value="">-- เลือกห้อง --</option>'; Object.keys(data.rooms).sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' })).forEach(r => { let d = data.rooms[r]; let displayName = r.replace("_", "/"); tbodyRooms += `<tr><td><b>${displayName}</b></td><td class="text-success">${d['มาเรียน']}</td><td class="text-warning">${d['ลากิจ']}</td><td class="text-info">${d['ลาป่วย']}</td><td class="text-secondary">${d['มาสาย']}</td><td class="text-danger">${d['ขาดเรียน']}</td><td>${d['รวม']}</td><td><b>${d['ทั้งหมด']}</b></td></tr>`; roomSelect.innerHTML += `<option value="${r}">ชั้น ${displayName}</option>`; }); document.querySelector('#tableRooms tbody').innerHTML = tbodyRooms; document.getElementById('reportContent').style.display = 'block'; document.getElementById('pdfBtn').disabled = false; document.getElementById('excelBtn').disabled = false; document.getElementById('studentListCard').style.display = 'block';
     }
