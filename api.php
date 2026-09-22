@@ -52,6 +52,10 @@ try {
         ensureAcademicYearSchema($pdo);
         $_SESSION['academic_year_schema_v2_ready'] = true;
     }
+    if (empty($_SESSION['absence_followup_schema_v1_ready'])) {
+        ensureAttendanceFollowupSchema($pdo);
+        $_SESSION['absence_followup_schema_v1_ready'] = true;
+    }
     // Release the session file lock before database/report work so parallel
     // AJAX requests from the same browser do not block one another.
     if (!in_array($action, ['processLogin', 'logoutSession'], true)) {
@@ -209,6 +213,12 @@ function routeAction($action, $args, $pdo) {
 
         case 'getAttendanceCalendar':
             return getAttendanceCalendar($args[0] ?? '', $args[1] ?? '', $args[2] ?? '', $args[3] ?? '', (bool)($args[4] ?? false), $pdo);
+
+        case 'saveAbsenceFollowup':
+            return saveAbsenceFollowup($args[0] ?? '', $args[1] ?? '', $args[2] ?? '', $args[3] ?? '', $args[4] ?? '', $args[5] ?? '', $pdo);
+
+        case 'getAbsenceFollowupHistory':
+            return getAbsenceFollowupHistory($args[0] ?? '', $args[1] ?? '', $args[2] ?? '', $args[3] ?? '', $pdo);
             
         case 'getIndividualSummary':
             return getIndividualSummary($args[0], $args[1], $args[2], $args[3], $args[4], $pdo);
@@ -3294,6 +3304,188 @@ function addClubAdminRole($username, $pdo) {
     } catch (Exception $e) {
         return ['success' => false, 'message' => $e->getMessage()];
     }
+}
+
+/**
+ * Return a compact attendance calendar and consecutive-absence alerts for the
+ * teacher's advisory room.  Dates are scoped to the selected academic period.
+ */
+function getAttendanceCalendar($teacherName, $advisoryRoom, $academicYear, $semester, $isAdmin, $pdo) {
+    // Always derive the scope from the authenticated account; never allow an
+    // administrator flag or client-supplied room to widen this dashboard view.
+    $teacherName = requireTeacherSession($teacherName);
+    $currentUser = getCurrentTeacherPermissions($pdo);
+    $advisoryRoom = trim((string)($currentUser['advisory_room'] ?? ''));
+    if ($advisoryRoom === '') {
+        return ['success' => true, 'academicYear' => $academicYear, 'semester' => $semester, 'days' => [], 'alerts' => []];
+    }
+    [$academicYear, $semester, $periodStart, $periodEnd] = academicPeriodBounds($academicYear, $semester, $pdo);
+    $parts = explode('/', (string)$advisoryRoom, 2);
+    $params = [$periodStart, $periodEnd];
+    $where = 'a.date BETWEEN ? AND ?';
+    if (count($parts) !== 2 || $parts[0] === '' || $parts[1] === '') {
+        return ['success' => true, 'academicYear' => $academicYear, 'semester' => $semester, 'days' => [], 'alerts' => []];
+    }
+    $where .= ' AND a.level = ? AND a.room = ?';
+    $params[] = $parts[0];
+    $params[] = $parts[1];
+    $stmt = $pdo->prepare("SELECT a.date, a.student_id, a.name, a.level, a.room, a.status
+        FROM attendance a WHERE {$where} ORDER BY a.date ASC, a.student_id ASC");
+    $stmt->execute($params);
+    $days = [];
+    $absences = [];
+    // Use the dates on which the advisory room was actually checked. This
+    // avoids counting weekends, holidays, or days with no attendance sheet as
+    // a break (or an extra day) in a student's absence streak.
+    $roomAttendanceDates = [];
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $date = substr((string)$row['date'], 0, 10);
+        if ($date !== '') $roomAttendanceDates[$date] = true;
+        if (!isset($days[$date])) $days[$date] = ['date' => $date, 'มาเรียน' => 0, 'มาสาย' => 0, 'ลากิจ' => 0, 'ลาป่วย' => 0, 'ขาดเรียน' => 0, 'เช็คชื่อแล้ว' => 0, 'absentStudents' => []];
+        $status = (string)$row['status'];
+        if (array_key_exists($status, $days[$date])) $days[$date][$status]++;
+        $days[$date]['เช็คชื่อแล้ว']++;
+        if ($status === 'ขาดเรียน') {
+            $days[$date]['absentStudents'][] = (string)$row['name'];
+            $sid = (string)$row['student_id'];
+            if (!isset($absences[$sid])) $absences[$sid] = ['studentId' => $sid, 'name' => (string)$row['name'], 'level' => (string)$row['level'], 'room' => (string)$row['room'], 'dates' => []];
+            $absences[$sid]['dates'][] = $date;
+        }
+    }
+    $roomAttendanceDates = array_keys($roomAttendanceDates);
+    sort($roomAttendanceDates, SORT_STRING);
+    $alerts = [];
+    foreach ($absences as $student) {
+        $absentDates = array_fill_keys(array_values(array_unique($student['dates'])), true);
+        $run = [];
+        foreach ($roomAttendanceDates as $date) {
+            if (!isset($absentDates[$date])) {
+                $run = [];
+                continue;
+            }
+            $run[] = $date;
+            if (count($run) === 3 || count($run) > 3) {
+                // Keep the latest alert for a streak; the UI groups by student
+                // and shows the current absence period to the adviser.
+                $alerts[] = ['type' => 'consecutive', 'reason' => 'ขาดเรียนติดต่อกัน', 'studentId' => $student['studentId'], 'name' => $student['name'], 'level' => $student['level'], 'room' => $student['room'], 'from' => $run[0], 'to' => $date, 'days' => count($run)];
+            }
+        }
+        // A separate monthly threshold catches frequent absence even when it
+        // is interrupted by an attended day. Count each checked date once.
+        $datesByMonth = [];
+        foreach (array_keys($absentDates) as $date) {
+            $monthKey = substr($date, 0, 7);
+            if ($monthKey !== '') $datesByMonth[$monthKey][] = $date;
+        }
+        foreach ($datesByMonth as $monthKey => $monthDates) {
+            $monthDates = array_values(array_unique($monthDates));
+            sort($monthDates, SORT_STRING);
+            if (count($monthDates) >= 5) {
+                $alerts[] = ['type' => 'monthly', 'reason' => 'ขาดเรียนสะสมภายในเดือน', 'studentId' => $student['studentId'], 'name' => $student['name'], 'level' => $student['level'], 'room' => $student['room'], 'from' => $monthDates[0], 'to' => $monthDates[count($monthDates) - 1], 'days' => count($monthDates), 'month' => $monthKey];
+            }
+        }
+    }
+    $followupStmt = $pdo->prepare("SELECT student_id, status, note, updated_by, updated_at FROM attendance_absence_followups WHERE academic_year = ? AND semester = ? AND advisory_room = ?");
+    $followupStmt->execute([$academicYear, $semester, $advisoryRoom]);
+    $followups = [];
+    foreach ($followupStmt->fetchAll(PDO::FETCH_ASSOC) as $followup) {
+        $followups[(string)$followup['student_id']] = [
+            'status' => (string)$followup['status'],
+            'note' => (string)($followup['note'] ?? ''),
+            'updatedBy' => (string)$followup['updated_by'],
+            'updatedAt' => (string)$followup['updated_at']
+        ];
+    }
+    return ['success' => true, 'academicYear' => $academicYear, 'semester' => $semester, 'days' => array_values($days), 'alerts' => $alerts, 'followups' => $followups];
+}
+
+function ensureAttendanceFollowupSchema($pdo) {
+    $pdo->exec("CREATE TABLE IF NOT EXISTS attendance_absence_followups (
+        academic_year VARCHAR(9) NOT NULL,
+        semester TINYINT UNSIGNED NOT NULL,
+        advisory_room VARCHAR(40) NOT NULL,
+        student_id VARCHAR(100) NOT NULL,
+        status VARCHAR(40) NOT NULL,
+        note VARCHAR(500) NULL,
+        updated_by VARCHAR(255) NOT NULL,
+        updated_at DATETIME NOT NULL,
+        PRIMARY KEY (academic_year, semester, advisory_room, student_id),
+        KEY idx_absence_followup_student (student_id),
+        KEY idx_absence_followup_updated (updated_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    $pdo->exec("CREATE TABLE IF NOT EXISTS attendance_absence_followup_logs (
+        id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+        academic_year VARCHAR(9) NOT NULL,
+        semester TINYINT UNSIGNED NOT NULL,
+        advisory_room VARCHAR(40) NOT NULL,
+        student_id VARCHAR(100) NOT NULL,
+        status VARCHAR(40) NOT NULL,
+        note VARCHAR(500) NULL,
+        updated_by VARCHAR(255) NOT NULL,
+        updated_at DATETIME NOT NULL,
+        KEY idx_absence_followup_log_scope (academic_year, semester, advisory_room, student_id, updated_at),
+        KEY idx_absence_followup_log_date (updated_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+}
+
+function saveAbsenceFollowup($teacherName, $studentId, $academicYear, $semester, $status, $note, $pdo) {
+    requireTeacherSession($teacherName);
+    $currentUser = getCurrentTeacherPermissions($pdo);
+    $advisoryRoom = trim((string)($currentUser['advisory_room'] ?? ''));
+    if ($advisoryRoom === '') throw new RuntimeException('บัญชีนี้ยังไม่ได้กำหนดห้องที่ปรึกษา');
+
+    $allowedStatuses = ['ยังไม่ได้ติดตาม', 'รอประสาน', 'ติดต่อผู้ปกครองแล้ว', 'ดำเนินการแล้ว'];
+    $studentId = trim((string)$studentId);
+    $status = trim((string)$status);
+    $note = trim((string)$note);
+    if ($studentId === '' || !in_array($status, $allowedStatuses, true)) throw new InvalidArgumentException('ข้อมูลติดตามไม่ถูกต้อง');
+    if (function_exists('mb_strlen') ? mb_strlen($note, 'UTF-8') > 500 : strlen($note) > 2000) throw new InvalidArgumentException('หมายเหตุต้องไม่เกิน 500 ตัวอักษร');
+
+    [$academicYear, $semester] = resolveAcademicPeriod($academicYear, $semester, $pdo);
+    $calendar = getAttendanceCalendar($teacherName, $advisoryRoom, $academicYear, $semester, false, $pdo);
+    $isAlertStudent = false;
+    foreach (($calendar['alerts'] ?? []) as $alert) {
+        if ((string)($alert['studentId'] ?? '') === $studentId) { $isAlertStudent = true; break; }
+    }
+    if (!$isAlertStudent) throw new RuntimeException('นักเรียนรายนี้ไม่มีรายการขาดเรียนต่อเนื่องที่ต้องติดตามในเทอมปัจจุบัน');
+
+    $noteValue = $note !== '' ? $note : null;
+    $updatedBy = (string)$_SESSION['teacher_name'];
+    $pdo->beginTransaction();
+    try {
+        $stmt = $pdo->prepare("INSERT INTO attendance_absence_followups (academic_year, semester, advisory_room, student_id, status, note, updated_by, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
+            ON DUPLICATE KEY UPDATE status = VALUES(status), note = VALUES(note), updated_by = VALUES(updated_by), updated_at = NOW()");
+        $stmt->execute([$academicYear, $semester, $advisoryRoom, $studentId, $status, $noteValue, $updatedBy]);
+        $log = $pdo->prepare("INSERT INTO attendance_absence_followup_logs (academic_year, semester, advisory_room, student_id, status, note, updated_by, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())");
+        $log->execute([$academicYear, $semester, $advisoryRoom, $studentId, $status, $noteValue, $updatedBy]);
+        $pdo->commit();
+    } catch (Exception $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        throw $e;
+    }
+    $saved = $pdo->prepare("SELECT updated_at FROM attendance_absence_followups WHERE academic_year = ? AND semester = ? AND advisory_room = ? AND student_id = ?");
+    $saved->execute([$academicYear, $semester, $advisoryRoom, $studentId]);
+    return ['success' => true, 'academicYear' => $academicYear, 'semester' => $semester, 'status' => $status, 'note' => $note, 'updatedBy' => (string)$_SESSION['teacher_name'], 'updatedAt' => (string)$saved->fetchColumn()];
+}
+
+function getAbsenceFollowupHistory($teacherName, $studentId, $academicYear, $semester, $pdo) {
+    requireTeacherSession($teacherName);
+    $currentUser = getCurrentTeacherPermissions($pdo);
+    $advisoryRoom = trim((string)($currentUser['advisory_room'] ?? ''));
+    if ($advisoryRoom === '') throw new RuntimeException('บัญชีนี้ยังไม่ได้กำหนดห้องที่ปรึกษา');
+    $studentId = trim((string)$studentId);
+    [$academicYear, $semester] = resolveAcademicPeriod($academicYear, $semester, $pdo);
+    $calendar = getAttendanceCalendar($teacherName, $advisoryRoom, $academicYear, $semester, false, $pdo);
+    $isAlertStudent = false;
+    foreach (($calendar['alerts'] ?? []) as $alert) {
+        if ((string)($alert['studentId'] ?? '') === $studentId) { $isAlertStudent = true; break; }
+    }
+    if (!$isAlertStudent) throw new RuntimeException('ไม่มีสิทธิ์ดูประวัติรายการนี้');
+    $stmt = $pdo->prepare("SELECT status, note, updated_by, updated_at FROM attendance_absence_followup_logs
+        WHERE academic_year = ? AND semester = ? AND advisory_room = ? AND student_id = ? ORDER BY id DESC LIMIT 30");
+    $stmt->execute([$academicYear, $semester, $advisoryRoom, $studentId]);
+    return ['success' => true, 'history' => $stmt->fetchAll(PDO::FETCH_ASSOC)];
 }
 
 function addActivityAdminRole($username, $pdo) {

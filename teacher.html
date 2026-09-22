@@ -10,6 +10,7 @@
   <base target="_top">
   <meta charset="UTF-8">
   <meta name="color-scheme" content="light">
+  <link rel="icon" type="image/png" href="logo.png?v=20260920">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>ระบบบันทึกและสรุปผลเวลาเรียน - มกุฎเมืองราชวิทยาลัย</title>
   
@@ -854,6 +855,42 @@
                       </table>
                     </div>
                   </div>
+                </div>
+              </div>
+            </div>
+
+            <div id="attendanceCalendarCard" class="card border-0 shadow-sm mb-4 d-none">
+              <div class="card-body">
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
+                  <h6 class="fw-bold mb-0"><i class="fas fa-calendar-check text-primary me-1"></i> ปฏิทินเช็คชื่อห้องที่ปรึกษา</h6>
+                  <span id="attendanceCalendarPeriod" class="small text-muted"></span>
+                </div>
+                <div id="attendanceStreakAlert" class="alert alert-danger py-2 d-none mb-3"></div>
+                <div id="attendanceFollowupPanel" class="border rounded-3 p-3 mb-3 d-none bg-light">
+                  <div class="d-flex align-items-start justify-content-between flex-wrap gap-2 mb-2">
+                    <div>
+                      <h6 class="fw-bold text-danger mb-1"><i class="fas fa-user-clock me-1"></i> ติดตามนักเรียนขาดเรียนต่อเนื่อง</h6>
+                      <small class="text-muted">แจ้งเตือนเมื่อนักเรียนห้องที่ปรึกษาขาดเรียนติดต่อกันอย่างน้อย 3 วัน หรือขาดสะสมอย่างน้อย 5 วันภายในเดือนเดียวกัน บันทึกแยกตามปีการศึกษาและภาคเรียน</small>
+                    </div>
+                    <span class="badge text-bg-danger">สำหรับครูที่ปรึกษา</span>
+                  </div>
+                  <div class="table-responsive">
+                    <table class="table table-sm table-bordered align-middle bg-white mb-0">
+                      <thead class="table-light"><tr><th>นักเรียน</th><th>ช่วงที่ขาด</th><th style="min-width:170px">สถานะติดตาม</th><th style="min-width:200px">บันทึกเพิ่มเติม</th><th class="text-center">บันทึก</th></tr></thead>
+                      <tbody id="attendanceFollowupRows"></tbody>
+                    </table>
+                  </div>
+                </div>
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                  <button type="button" class="btn btn-sm btn-outline-secondary" id="attendanceCalendarPrev" aria-label="เดือนก่อนหน้า"><i class="fas fa-chevron-left"></i></button>
+                  <strong id="attendanceCalendarMonthLabel" class="text-primary"></strong>
+                  <button type="button" class="btn btn-sm btn-outline-secondary" id="attendanceCalendarNext" aria-label="เดือนถัดไป"><i class="fas fa-chevron-right"></i></button>
+                </div>
+                <div id="attendanceCalendarGrid" class="table-responsive">
+                  <table class="table table-bordered table-sm text-center align-middle mb-0" aria-label="ปฏิทินการเช็คชื่อ">
+                    <thead class="table-light"><tr><th>อา.</th><th>จ.</th><th>อ.</th><th>พ.</th><th>พฤ.</th><th>ศ.</th><th>ส.</th></tr></thead>
+                    <tbody id="attendanceCalendarDays"></tbody>
+                  </table>
                 </div>
               </div>
             </div>
@@ -3486,6 +3523,164 @@
         }).getRoomRewardReport(level, room, teacherName, period.academicYear, period.semester);
       }
     }
+
+    let attendanceCalendarMonths = [];
+    let attendanceCalendarMonthIndex = 0;
+    let attendanceCalendarDayMap = {};
+    let attendanceCalendarPeriodKey = { academicYear: '', semester: '' };
+
+    function attendanceCalendarDisplayName(fullName) {
+      const normalizedName = String(fullName || '').trim().replace(/^(นางสาว|เด็กชาย|เด็กหญิง|น\.ส\.|ด\.ช\.|ด\.ญ\.|นาย|นาง)\s*/, '');
+      const parts = normalizedName.split(/\s+/).filter(Boolean);
+      if (!parts.length) return '';
+      return parts[0] || '';
+    }
+
+    function renderAttendanceCalendarMonth() {
+      const monthLabel = document.getElementById('attendanceCalendarMonthLabel');
+      const calendarBody = document.getElementById('attendanceCalendarDays');
+      if (!monthLabel || !calendarBody || !attendanceCalendarMonths.length) return;
+      const monthKey = attendanceCalendarMonths[attendanceCalendarMonthIndex];
+      const [year, month] = monthKey.split('-').map(Number);
+      monthLabel.textContent = new Date(year, month - 1, 1).toLocaleDateString('th-TH', { month: 'long', year: 'numeric' });
+      const firstWeekday = new Date(year, month - 1, 1).getDay();
+      const daysInMonth = new Date(year, month, 0).getDate();
+      const cells = [];
+      for (let i = 0; i < firstWeekday; i++) cells.push('<td class="bg-light"></td>');
+      for (let dayNo = 1; dayNo <= daysInMonth; dayNo++) {
+        const date = `${year}-${String(month).padStart(2, '0')}-${String(dayNo).padStart(2, '0')}`;
+        const summary = attendanceCalendarDayMap[date];
+        const absentNames = summary && Array.isArray(summary.absentStudents) ? summary.absentStudents : [];
+        const details = absentNames.length
+          ? `<div class="text-danger text-start mt-1" style="font-size:.72rem;line-height:1.15">${[...new Set(absentNames.map(attendanceCalendarDisplayName).filter(Boolean))].map(name => activityEscape(name)).join('<br>')}</div>`
+          : '';
+        cells.push(`<td class="p-1 ${summary ? 'bg-white' : 'bg-light'}" style="min-height:52px; min-width:72px; vertical-align:top"><div class="fw-bold small">${dayNo}</div>${details}</td>`);
+      }
+      while (cells.length % 7) cells.push('<td class="bg-light"></td>');
+      const weeks = [];
+      for (let i = 0; i < cells.length; i += 7) weeks.push(`<tr>${cells.slice(i, i + 7).join('')}</tr>`);
+      calendarBody.innerHTML = weeks.join('');
+      document.getElementById('attendanceCalendarPrev').disabled = attendanceCalendarMonthIndex <= 0;
+      document.getElementById('attendanceCalendarNext').disabled = attendanceCalendarMonthIndex >= attendanceCalendarMonths.length - 1;
+    }
+
+    function loadAttendanceCalendar() {
+      const card = document.getElementById('attendanceCalendarCard');
+      const alertBox = document.getElementById('attendanceStreakAlert');
+      const periodLabel = document.getElementById('attendanceCalendarPeriod');
+      if (!card || !teacherName || !advisoryRoom) { card?.classList.add('d-none'); return; }
+      const period = getGlobalAcademicPeriod();
+      google.script.run.withSuccessHandler(res => {
+        const days = (res && res.days) || [];
+        const alerts = (res && res.alerts) || [];
+        attendanceCalendarPeriodKey = { academicYear: res.academicYear, semester: res.semester };
+        if (!days.length) { card.classList.add('d-none'); return; }
+        card.classList.remove('d-none');
+        periodLabel.textContent = `${advisoryRoom} · ปี ${res.academicYear} · ภาคเรียนที่ ${res.semester}`;
+        attendanceCalendarDayMap = Object.fromEntries(days.map(day => [day.date, day]));
+        attendanceCalendarMonths = [...new Set(days.map(day => day.date.slice(0, 7)))].sort();
+        const nowMonth = new Date().toISOString().slice(0, 7);
+        attendanceCalendarMonthIndex = Math.max(0, attendanceCalendarMonths.indexOf(nowMonth));
+        if (!attendanceCalendarMonths.includes(nowMonth)) attendanceCalendarMonthIndex = attendanceCalendarMonths.length - 1;
+        renderAttendanceCalendarMonth();
+        if (alerts.length) {
+          alertBox.classList.remove('d-none');
+          const alertNames = [...new Map(alerts.map(a => {
+            const name = attendanceCalendarDisplayName(a.name);
+            const reason = a.type === 'monthly' ? `ขาดสะสม ${Number(a.days) || 0} วันในเดือนเดียวกัน` : `ขาดติดต่อกัน ${Number(a.days) || 0} วัน`;
+            return [String(a.studentId || name), `${activityEscape(name)} <span class="text-muted">(${activityEscape(reason)})</span>`];
+          }).filter(([key, value]) => key && value)).values()];
+          alertBox.innerHTML = `<b>⚠️ แจ้งเตือนครูที่ปรึกษา:</b><br>${alertNames.join('<br>')}`;
+          renderAttendanceFollowups(alerts, (res && res.followups) || {});
+        } else {
+          alertBox.classList.add('d-none'); alertBox.textContent = '';
+          document.getElementById('attendanceFollowupPanel')?.classList.add('d-none');
+          document.getElementById('attendanceFollowupRows').innerHTML = '';
+        }
+      }).withFailureHandler(() => card.classList.add('d-none'))
+        .getAttendanceCalendar(teacherName, advisoryRoom, period.academicYear, period.semester, false);
+    }
+
+    function renderAttendanceFollowups(alerts, followups) {
+      const panel = document.getElementById('attendanceFollowupPanel');
+      const rows = document.getElementById('attendanceFollowupRows');
+      if (!panel || !rows) return;
+      const statuses = ['ยังไม่ได้ติดตาม', 'รอประสาน', 'ติดต่อผู้ปกครองแล้ว', 'ดำเนินการแล้ว'];
+      const latestAlertByStudent = new Map();
+      alerts.forEach(alert => latestAlertByStudent.set(String(alert.studentId || ''), alert));
+      rows.innerHTML = [...latestAlertByStudent.values()].map(alert => {
+        const id = String(alert.studentId || '');
+        const saved = followups[id] || {};
+        const status = statuses.includes(saved.status) ? saved.status : statuses[0];
+        const options = statuses.map(value => `<option value="${activityEscape(value)}" ${value === status ? 'selected' : ''}>${activityEscape(value)}</option>`).join('');
+        const savedInfo = saved.updatedAt ? `<small class="d-block text-success mt-1">บันทึกล่าสุด ${activityEscape(saved.updatedAt)}</small>` : '';
+        return `<tr data-followup-student="${activityEscape(id)}">
+          <td class="fw-semibold">${activityEscape(attendanceCalendarDisplayName(alert.name))}</td>
+          <td class="small">${activityEscape(alert.from)} – ${activityEscape(alert.to)}<br><span class="text-danger">${activityEscape(alert.reason || 'ขาดเรียน')} ${Number(alert.days) || 0} วัน</span></td>
+          <td><select class="form-select form-select-sm attendance-followup-status">${options}</select>${savedInfo}</td>
+          <td><input type="text" maxlength="500" class="form-control form-control-sm attendance-followup-note" value="${activityEscape(saved.note || '')}" placeholder="หมายเหตุ (ถ้ามี)"></td>
+          <td class="text-center text-nowrap"><button type="button" class="btn btn-sm btn-primary" data-save-attendance-followup>บันทึก</button> <button type="button" class="btn btn-sm btn-outline-secondary" data-view-attendance-followup-history>ประวัติ</button></td>
+        </tr>`;
+      }).join('');
+      panel.classList.remove('d-none');
+      rows.querySelectorAll('[data-save-attendance-followup]').forEach(button => button.addEventListener('click', () => saveAttendanceFollowup(button)));
+      rows.querySelectorAll('[data-view-attendance-followup-history]').forEach(button => button.addEventListener('click', () => showAttendanceFollowupHistory(button)));
+      rows.querySelectorAll('.attendance-followup-status, .attendance-followup-note').forEach(input => input.addEventListener('input', () => {
+        const saveButton = input.closest('tr')?.querySelector('[data-save-attendance-followup]');
+        if (saveButton) { saveButton.classList.remove('btn-success'); saveButton.classList.add('btn-primary'); saveButton.textContent = 'บันทึก'; }
+      }));
+    }
+
+    function saveAttendanceFollowup(button) {
+      const row = button.closest('tr[data-followup-student]');
+      if (!row) return;
+      const studentId = row.dataset.followupStudent;
+      const status = row.querySelector('.attendance-followup-status')?.value || '';
+      const note = row.querySelector('.attendance-followup-note')?.value || '';
+      button.disabled = true;
+      button.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>กำลังบันทึก';
+      google.script.run.withSuccessHandler(res => {
+        if (res && res.success) {
+          button.classList.remove('btn-primary');
+          button.classList.add('btn-success');
+          button.textContent = 'บันทึกแล้ว';
+          row.querySelector('td:nth-child(3) small')?.remove();
+          const updated = document.createElement('small');
+          updated.className = 'd-block text-success mt-1';
+          updated.textContent = `บันทึกล่าสุด ${res.updatedAt || ''}`;
+          row.querySelector('td:nth-child(3)')?.appendChild(updated);
+          button.disabled = false;
+        } else {
+          button.disabled = false;
+          button.textContent = 'บันทึก';
+          if (window.Swal) Swal.fire('บันทึกไม่สำเร็จ', (res && res.message) || 'กรุณาลองอีกครั้ง', 'error');
+        }
+      }).withFailureHandler(error => {
+        button.disabled = false;
+        button.textContent = 'บันทึก';
+        if (window.Swal) Swal.fire('บันทึกไม่สำเร็จ', error.message || 'กรุณาลองอีกครั้ง', 'error');
+      }).saveAbsenceFollowup(teacherName, studentId, attendanceCalendarPeriodKey.academicYear, attendanceCalendarPeriodKey.semester, status, note);
+    }
+
+    function showAttendanceFollowupHistory(button) {
+      const row = button.closest('tr[data-followup-student]');
+      if (!row) return;
+      button.disabled = true;
+      google.script.run.withSuccessHandler(res => {
+        button.disabled = false;
+        const history = (res && res.history) || [];
+        const historyHtml = history.length
+          ? `<div class="text-start">${history.map(item => `<div class="border-bottom py-2"><b>${activityEscape(item.status)}</b><br><small class="text-muted">${activityEscape(item.updated_at)} · ${activityEscape(item.updated_by)}</small>${item.note ? `<div class="mt-1">${activityEscape(item.note)}</div>` : ''}</div>`).join('')}</div>`
+          : '<p class="text-muted mb-0">ยังไม่มีประวัติการติดตามที่บันทึกไว้</p>';
+        if (window.Swal) Swal.fire({ title: `ประวัติติดตาม · ${attendanceCalendarDisplayName(row.querySelector('td')?.textContent)}`, html: historyHtml, width: 600, confirmButtonText: 'ปิด' });
+      }).withFailureHandler(error => {
+        button.disabled = false;
+        if (window.Swal) Swal.fire('เปิดประวัติไม่ได้', error.message || 'กรุณาลองอีกครั้ง', 'error');
+      }).getAbsenceFollowupHistory(teacherName, row.dataset.followupStudent, attendanceCalendarPeriodKey.academicYear, attendanceCalendarPeriodKey.semester);
+    }
+
+    document.getElementById('attendanceCalendarPrev')?.addEventListener('click', () => { if (attendanceCalendarMonthIndex > 0) { attendanceCalendarMonthIndex--; renderAttendanceCalendarMonth(); } });
+    document.getElementById('attendanceCalendarNext')?.addEventListener('click', () => { if (attendanceCalendarMonthIndex < attendanceCalendarMonths.length - 1) { attendanceCalendarMonthIndex++; renderAttendanceCalendarMonth(); } });
 
     function searchStudentVolunteer() {
       const searchVal = document.getElementById('searchStuIdVol').value.trim();
