@@ -3574,9 +3574,20 @@
         const days = (res && res.days) || [];
         const alerts = (res && res.alerts) || [];
         attendanceCalendarPeriodKey = { academicYear: res.academicYear, semester: res.semester };
-        if (!days.length) { card.classList.add('d-none'); return; }
         card.classList.remove('d-none');
         periodLabel.textContent = `${advisoryRoom} · ปี ${res.academicYear} · ภาคเรียนที่ ${res.semester}`;
+        if (!days.length) {
+          attendanceCalendarMonths = [];
+          attendanceCalendarDayMap = {};
+          document.getElementById('attendanceCalendarMonthLabel').textContent = 'ยังไม่มีข้อมูลการเช็คชื่อ';
+          document.getElementById('attendanceCalendarDays').innerHTML = '<tr><td colspan="7" class="text-center text-muted py-3">ยังไม่มีข้อมูลการเช็คชื่อในห้องที่ปรึกษาและภาคเรียนนี้</td></tr>';
+          document.getElementById('attendanceCalendarPrev').disabled = true;
+          document.getElementById('attendanceCalendarNext').disabled = true;
+          alertBox.classList.add('d-none'); alertBox.textContent = '';
+          document.getElementById('attendanceFollowupPanel')?.classList.add('d-none');
+          document.getElementById('attendanceFollowupRows').innerHTML = '';
+          return;
+        }
         attendanceCalendarDayMap = Object.fromEntries(days.map(day => [day.date, day]));
         attendanceCalendarMonths = [...new Set(days.map(day => day.date.slice(0, 7)))].sort();
         const nowMonth = new Date().toISOString().slice(0, 7);
