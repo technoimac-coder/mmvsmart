@@ -3608,7 +3608,14 @@
           document.getElementById('attendanceFollowupPanel')?.classList.add('d-none');
           document.getElementById('attendanceFollowupRows').innerHTML = '';
         }
-      }).withFailureHandler(() => card.classList.add('d-none'))
+      }).withFailureHandler(error => {
+        card.classList.remove('d-none');
+        periodLabel.textContent = advisoryRoom ? `${advisoryRoom} · ไม่สามารถโหลดข้อมูลปฏิทินได้` : 'ไม่พบห้องที่ปรึกษา';
+        document.getElementById('attendanceCalendarMonthLabel').textContent = 'โหลดข้อมูลไม่สำเร็จ';
+        document.getElementById('attendanceCalendarDays').innerHTML = `<tr><td colspan="7" class="text-center text-danger py-3">ไม่สามารถโหลดข้อมูลการเช็คชื่อได้${error && error.message ? `: ${activityEscape(error.message)}` : ' กรุณารีเฟรชหรือติดต่อผู้ดูแลระบบ'}</td></tr>`;
+        document.getElementById('attendanceCalendarPrev').disabled = true;
+        document.getElementById('attendanceCalendarNext').disabled = true;
+      })
         .getAttendanceCalendar(teacherName, advisoryRoom, period.academicYear, period.semester, false);
     }
 
