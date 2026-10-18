@@ -5110,7 +5110,12 @@ function loadTeachersForClub() {
     function renderActivitySummaryRows(res) {
       const students = res.students || [];
       if (!students.length) return '<tr><td colspan="9" class="text-center text-muted py-3">ไม่พบนักเรียนในห้องนี้</td></tr>';
-      return students.map(student => `<tr>
+      let previousRoom = null;
+      return students.map(student => {
+        const room = res.room === 'all' ? String(student.room || '') : '';
+        const divider = room && room !== previousRoom ? `<tr class="activity-room-divider"><td colspan="9" style="background:#e0e7ff;color:#1e3a8a;font-weight:700;text-align:left;border-top:3px solid #4f46e5;padding:8px 12px;">📚 ห้อง ${activityEscape(room)} <span style="font-weight:400;font-size:.85em;">รายชื่อนักเรียนในห้องนี้</span></td></tr>` : '';
+        previousRoom = room || previousRoom;
+        return `${divider}<tr>
         <td class="text-center">${activityEscape(student.no)}</td>
         <td>${activityEscape(student.id)}</td>
         <td class="text-nowrap">${activityEscape(student.name)}${res.room === 'all' && student.room ? `<br><small class="text-muted">ห้อง ${activityEscape(student.room)}</small>` : ''}</td>
@@ -5120,7 +5125,8 @@ function loadTeachersForClub() {
         <td class="text-center text-secondary">${Number(student.unchecked || 0)}</td>
         <td class="text-center">${Number(student.percent || 0).toFixed(2)}%</td>
         <td class="text-center"><span class="badge ${student.passed ? 'bg-success' : 'bg-danger'}">${student.passed ? 'ผ่าน' : 'ไม่ผ่าน'}</span></td>
-      </tr>`).join('');
+      </tr>`;
+      }).join('');
     }
 
     function renderActivityStudents(activity) {
