@@ -1923,7 +1923,10 @@
             <button class="btn btn-sm btn-outline-secondary" onclick="loadAdminTeacherAvatarsList()"><i class="fas fa-sync-alt me-1"></i> รีเฟรช</button>
           </div>
           
-          <input type="text" id="filterTeacherAvatarInput" class="form-control form-control-sm mb-2" placeholder="🔍 ค้นหาชื่อครู หรือรหัส..." onkeyup="filterTeacherAvatarGrid()">
+          <div class="row g-2 mb-2">
+            <div class="col-12 col-md-7"><input type="text" id="filterTeacherAvatarInput" class="form-control form-control-sm" placeholder="🔍 ค้นหาชื่อครู หรือรหัส..." onkeyup="filterTeacherAvatarGrid()"></div>
+            <div class="col-12 col-md-5"><select id="filterTeacherStatus" class="form-select form-select-sm" onchange="filterTeacherAvatarGrid()"><option value="active">แสดงเฉพาะครูที่ใช้งาน</option><option value="inactive">แสดงครูพ้นสภาพ</option><option value="all">แสดงครูทั้งหมด</option></select></div>
+          </div>
 
           <div id="adminTeacherAvatarGrid" class="row g-2" style="max-height: 320px; overflow-y: auto;">
             <div class="text-center py-4 text-muted col-12">กำลังโหลดรายชื่อครู...</div>
@@ -2286,7 +2289,7 @@
           : '<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle rounded-pill" style="font-size:0.7rem;">พ้นสภาพ / ไม่ใช้งาน</span>';
 
         return `
-          <div class="col-12 col-md-6 teacher-avatar-card" data-name="${t.name.toLowerCase()}">
+          <div class="col-12 col-md-6 teacher-avatar-card" data-name="${t.name.toLowerCase()}" data-status="${status}">
             <div class="p-2 px-3 border rounded-3 bg-white d-flex align-items-center justify-content-between shadow-sm h-100">
               <div class="d-flex align-items-center gap-2" style="min-width: 0;">
                 ${avatarHtml}
@@ -2308,6 +2311,7 @@
           </div>
         `;
       }).join('');
+      filterTeacherAvatarGrid();
     }
 
     function openTeacherAssignmentEditor(id) {
@@ -2459,12 +2463,15 @@
 
     function filterTeacherAvatarGrid() {
       const q = document.getElementById('filterTeacherAvatarInput').value.trim().toLowerCase();
+      const statusFilter = document.getElementById('filterTeacherStatus')?.value || 'active';
       const cards = document.querySelectorAll('.teacher-avatar-card');
       cards.forEach(c => {
         const name = c.getAttribute('data-name') || '';
         const code = c.getAttribute('data-code') || '';
         const user = c.getAttribute('data-user') || '';
-        if (!q || name.includes(q) || code.includes(q) || user.includes(q)) {
+        const status = c.getAttribute('data-status') || 'active';
+        const statusMatch = statusFilter === 'all' || status === statusFilter;
+        if (statusMatch && (!q || name.includes(q) || code.includes(q) || user.includes(q))) {
           c.style.display = 'block';
         } else {
           c.style.display = 'none';
