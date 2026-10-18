@@ -2278,7 +2278,9 @@
         return;
       }
 
-      grid.innerHTML = list.map(t => {
+      const statusFilter = document.getElementById('filterTeacherStatus')?.value || 'active';
+      const visibleTeachers = list.filter(t => statusFilter === 'all' || (t.teacher_status || 'active') === statusFilter);
+      grid.innerHTML = visibleTeachers.map(t => {
         const hasAvatar = !!t.avatar;
         const safeName = t.name.replace(/'/g, "\\'");
         const avatarHtml = hasAvatar 
