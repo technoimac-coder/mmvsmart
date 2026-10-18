@@ -2252,6 +2252,8 @@
 
     function loadAdminTeacherAvatarsList() {
       const grid = document.getElementById('adminTeacherAvatarGrid');
+      const statusFilter = document.getElementById('filterTeacherStatus');
+      if (statusFilter) statusFilter.value = 'active';
       grid.innerHTML = '<div class="text-center py-4 text-muted col-12"><div class="spinner-border spinner-border-sm text-primary me-1"></div> กำลังโหลดรายชื่อครู...</div>';
 
       google.script.run
