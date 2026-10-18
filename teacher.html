@@ -1713,6 +1713,7 @@
                 <div class="col-5 col-md-2"><label class="form-label small fw-bold">ชั้น</label><select id="adminActivityReportLevel" class="form-select"><option value="">เลือกชั้น</option><option value="ม.1">ม.1</option><option value="ม.2">ม.2</option><option value="ม.3">ม.3</option><option value="ม.4">ม.4</option><option value="ม.5">ม.5</option><option value="ม.6">ม.6</option></select></div>
                 <div class="col-4 col-md-2"><label class="form-label small fw-bold">ห้อง</label><select id="adminActivityReportRoom" class="form-select"><option value="">เลือกห้อง</option><option value="all">ทุกห้องในระดับ</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option></select></div>
                 <div class="col-3 col-md-2"><button id="btnLoadAdminActivityReport" type="button" class="btn btn-primary w-100 fw-bold" onclick="loadAdminActivityReport()"><i class="fas fa-search me-1"></i>ดูรายงาน</button></div>
+                <div class="col-12 col-md-2"><button id="btnPrintAdminActivityReport" type="button" class="btn btn-outline-danger w-100 fw-bold" onclick="printAdminActivityReport()" disabled><i class="fas fa-file-pdf me-1"></i>พิมพ์ PDF</button></div>
               </div>
               <div id="adminActivityReportSummary" class="alert alert-light border py-2 mb-2">เลือกชั้นและห้องเพื่อดูรายงาน</div>
               <div id="adminActivityReportList" class="mb-3"></div>
@@ -4784,6 +4785,23 @@ function loadTeachersForClub() {
       });
     }
 
+    let lastAdminActivityReport = null;
+
+    function printAdminActivityReport() {
+      if (!lastAdminActivityReport) {
+        Swal.fire('ยังไม่มีรายงาน', 'กรุณากดดูรายงานก่อนพิมพ์ PDF', 'info');
+        return;
+      }
+      const report = lastAdminActivityReport;
+      const table = document.getElementById('adminActivityReportTable').cloneNode(true);
+      const activityList = document.getElementById('adminActivityReportList').innerHTML;
+      const title = `รายงานกิจกรรมรายห้อง ${report.level}/${report.room}`;
+      const popup = window.open('', '_blank', 'width=1100,height=800');
+      if (!popup) { Swal.fire('เปิดหน้าพิมพ์ไม่ได้', 'กรุณาอนุญาตป๊อปอัปของเว็บไซต์แล้วลองใหม่', 'warning'); return; }
+      popup.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${activityEscape(title)}</title><style>body{font-family:Arial,"Tahoma",sans-serif;color:#111;padding:24px}h2{margin:0 0 6px}p{margin:4px 0 14px;color:#444}.activities{margin:12px 0 18px;font-size:12px}.activities span{display:inline-block;border:1px solid #bbb;border-radius:4px;padding:3px 6px;margin:2px}table{width:100%;border-collapse:collapse;font-size:12px}th,td{border:1px solid #777;padding:6px;text-align:center}th{background:#e9eef5}td:nth-child(3){text-align:left}@media print{button{display:none}}</style></head><body><h2>${activityEscape(title)}</h2><p>ปีการศึกษา ${activityEscape(report.academicYear)} · ภาคเรียนที่ ${Number(report.semester)} · เกณฑ์ผ่าน ${Number(report.passThreshold || 80)}%</p><div class="activities"><b>กิจกรรมทั้งหมด</b><br>${activityList || '-'}</div>${table.outerHTML}<script>window.onload=function(){window.print();}<\/script></body></html>`);
+      popup.document.close();
+    }
+
     function loadAdminActivityReport() {
       const level = document.getElementById('adminActivityReportLevel').value;
       const room = document.getElementById('adminActivityReportRoom').value;
@@ -4806,6 +4824,8 @@ function loadTeachersForClub() {
       google.script.run.withSuccessHandler(res => {
         button.disabled = false;
         button.innerHTML = '<i class="fas fa-search me-1"></i>ดูรายงาน';
+        lastAdminActivityReport = res;
+        document.getElementById('btnPrintAdminActivityReport').disabled = false;
         const activities = res.activities || [];
         const students = res.students || [];
         summary.className = 'alert alert-info border py-2 mb-2';
