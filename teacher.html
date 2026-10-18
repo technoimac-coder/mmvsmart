@@ -1664,12 +1664,12 @@
                 <button type="button" class="btn btn-sm btn-outline-info" onclick="downloadBulkRoomMoveTemplate()"><i class="fas fa-download me-1"></i>ไฟล์ตัวอย่าง</button>
               </div>
               <div class="row g-2 align-items-end mb-3">
-                <div class="col-12 col-md-7"><label class="form-label small fw-bold">ไฟล์ Excel/CSV (รหัสนักเรียน, ชั้น, ห้อง)</label><input id="bulkRoomMoveFile" type="file" class="form-control" accept=".xlsx,.xls,.csv"></div>
+                <div class="col-12 col-md-7"><label class="form-label small fw-bold">ไฟล์ Excel/CSV (รหัสนักเรียน, ชื่อ-สกุล, ชั้น, ห้อง)</label><input id="bulkRoomMoveFile" type="file" class="form-control" accept=".xlsx,.xls,.csv"></div>
                 <div class="col-6 col-md-2"><button type="button" class="btn btn-outline-primary w-100" onclick="previewBulkRoomMoveFile()"><i class="fas fa-search me-1"></i>ตรวจไฟล์</button></div>
                 <div class="col-6 col-md-3"><button type="button" id="bulkRoomMoveApplyButton" class="btn text-white fw-bold w-100" style="background:#0891b2;" onclick="applyBulkRoomMove()" disabled><i class="fas fa-save me-1"></i>บันทึกการย้ายห้อง</button></div>
               </div>
               <div id="bulkRoomMoveSummary" class="alert alert-light border py-2 mb-2">ยังไม่ได้เลือกไฟล์</div>
-              <div class="table-responsive" style="max-height:260px;"><table class="table table-sm table-bordered align-middle mb-0" id="bulkRoomMovePreviewTable"><thead class="table-info"><tr><th>แถว</th><th>รหัสนักเรียน</th><th>ชั้นใหม่</th><th>ห้องใหม่</th><th>ผลตรวจ</th></tr></thead><tbody><tr><td colspan="5" class="text-center text-muted">กด “ตรวจไฟล์” เพื่อดูรายการ</td></tr></tbody></table></div>
+              <div class="table-responsive" style="max-height:260px;"><table class="table table-sm table-bordered align-middle mb-0" id="bulkRoomMovePreviewTable"><thead class="table-info"><tr><th>แถว</th><th>รหัสนักเรียน</th><th>ชื่อ-สกุล</th><th>ชั้นใหม่</th><th>ห้องใหม่</th><th>ผลตรวจ</th></tr></thead><tbody><tr><td colspan="6" class="text-center text-muted">กด “ตรวจไฟล์” เพื่อดูรายการ</td></tr></tbody></table></div>
             </div>
 
             <!-- จัดการกิจกรรมและเปิดให้ครูเช็กชื่อ -->
@@ -4426,23 +4426,24 @@ function loadTeachersForClub() {
 
     function bulkRoomMoveHeaderKey(value) {
       const key = String(value ?? '').trim().toLowerCase().replace(/[\s._\-\/()]+/g, '');
-      const aliases = {'รหัสนักเรียน':'studentId','รหัสประจำตัว':'studentId','studentid':'studentId','student_id':'studentId','id':'studentId','ชั้น':'level','ระดับชั้น':'level','level':'level','class':'level','ห้อง':'room','ห้องเรียน':'room','room':'room'};
+      const aliases = {'รหัสนักเรียน':'studentId','รหัสประจำตัว':'studentId','studentid':'studentId','student_id':'studentId','id':'studentId','ชื่อ':'name','ชื่อสกุล':'name','ชื่อ-สกุล':'name','ชื่อ-นามสกุล':'name','name':'name','ชั้น':'level','ระดับชั้น':'level','level':'level','class':'level','ห้อง':'room','ห้องเรียน':'room','room':'room'};
       return aliases[key] || null;
     }
 
     function downloadBulkRoomMoveTemplate() {
       if (!window.XLSX) return Swal.fire('ไม่พร้อมใช้งาน','ไม่พบตัวอ่านไฟล์ Excel กรุณารีเฟรชหน้าเว็บ','error');
-      const ws = XLSX.utils.aoa_to_sheet([['รหัสนักเรียน','ชั้น','ห้อง'],['74001','ม.4','2'],['74002','ม.4','3']]);
-      ws['!cols'] = [{wch:18},{wch:12},{wch:10}];
+      const ws = XLSX.utils.aoa_to_sheet([['รหัสนักเรียน','ชื่อ-สกุล','ชั้น','ห้อง'],['74001','เด็กชายตัวอย่าง ใจดี','ม.4','2'],['74002','เด็กหญิงตัวอย่าง ตั้งใจ','ม.4','3']]);
+      ws['!cols'] = [{wch:18},{wch:28},{wch:12},{wch:10}];
       const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'ปรับห้อง');
       XLSX.writeFile(wb, 'แบบฟอร์มปรับห้องนักเรียนเดิม.xlsx');
     }
 
     function validateBulkRoomMoveRow(values, rowNumber, seen) {
-      const row = {studentId:String(values.studentId ?? '').trim(), level:String(values.level ?? '').trim(), room:String(values.room ?? '').trim()};
+      const row = {studentId:String(values.studentId ?? '').trim(), name:String(values.name ?? '').trim(), level:String(values.level ?? '').trim(), room:String(values.room ?? '').trim()};
       row.level = row.level.replace(/^ม\.?\s*([1-6])$/u,'ม.$1');
       const errors = [];
       if (!/^[0-9A-Za-z_-]{3,30}$/.test(row.studentId)) errors.push('รหัสนักเรียนไม่ถูกต้อง');
+      if (!row.name || row.name.length > 255) errors.push('ชื่อ-สกุลไม่ถูกต้อง');
       if (!/^ม\.[1-6]$/.test(row.level)) errors.push('ชั้นต้องเป็น ม.1-ม.6');
       if (!/^[1-6]$/.test(row.room)) errors.push('ห้องต้องเป็น 1-6');
       if (row.studentId && seen.has(row.studentId)) errors.push('รหัสซ้ำในไฟล์');
@@ -4461,7 +4462,7 @@ function loadTeachersForClub() {
         const headerIndex = data.findIndex(row => row.some(cell => String(cell).trim() !== ''));
         if (headerIndex < 0) throw new Error('ไฟล์ไม่มีข้อมูล');
         const mapped = data[headerIndex].map(bulkRoomMoveHeaderKey);
-        if (!mapped.includes('studentId') || !mapped.includes('level') || !mapped.includes('room')) throw new Error('หัวตารางต้องมี รหัสนักเรียน, ชั้น, ห้อง');
+        if (!mapped.includes('studentId') || !mapped.includes('name') || !mapped.includes('level') || !mapped.includes('room')) throw new Error('หัวตารางต้องมี รหัสนักเรียน, ชื่อ-สกุล, ชั้น, ห้อง');
         const seen = new Set(), parsed = [];
         for (let i=headerIndex+1;i<data.length;i++) {
           if (!data[i].some(cell => String(cell).trim() !== '')) continue;
@@ -4474,7 +4475,7 @@ function loadTeachersForClub() {
         const summary = document.getElementById('bulkRoomMoveSummary');
         summary.className = `alert ${bulkRoomMovePreviewErrors.length ? 'alert-danger':'alert-success'} py-2 mb-2`;
         summary.textContent = `พบ ${parsed.length} รายการ · ถูกต้อง ${bulkRoomMovePreviewRows.length} · ต้องแก้ไข ${bulkRoomMovePreviewErrors.length}`;
-        document.querySelector('#bulkRoomMovePreviewTable tbody').innerHTML = parsed.slice(0,150).map(row => `<tr class="${row.errors.length?'table-danger':''}"><td>${row.rowNumber}</td><td>${academicEscape(row.studentId)}</td><td>${academicEscape(row.level)}</td><td>${academicEscape(row.room)}</td><td>${row.errors.length?academicEscape(row.errors.join(', ')):'<span class="text-success">ผ่าน</span>'}</td></tr>`).join('');
+        document.querySelector('#bulkRoomMovePreviewTable tbody').innerHTML = parsed.slice(0,150).map(row => `<tr class="${row.errors.length?'table-danger':''}"><td>${row.rowNumber}</td><td>${academicEscape(row.studentId)}</td><td>${academicEscape(row.name)}</td><td>${academicEscape(row.level)}</td><td>${academicEscape(row.room)}</td><td>${row.errors.length?academicEscape(row.errors.join(', ')):'<span class="text-success">ผ่าน</span>'}</td></tr>`).join('');
         document.getElementById('bulkRoomMoveApplyButton').disabled = !!bulkRoomMovePreviewErrors.length || !bulkRoomMovePreviewRows.length;
       } catch (err) {
         bulkRoomMovePreviewRows=[]; bulkRoomMovePreviewErrors=[]; document.getElementById('bulkRoomMoveApplyButton').disabled=true;
