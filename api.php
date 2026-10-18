@@ -48,6 +48,10 @@ if (!$action) {
 
 // Route AJAX requests
 try {
+    if (empty($_SESSION['teacher_status_schema_v1_ready'])) {
+        ensureTeacherStatusSchema($pdo);
+        $_SESSION['teacher_status_schema_v1_ready'] = true;
+    }
     if (empty($_SESSION['academic_year_schema_v2_ready'])) {
         ensureAcademicYearSchema($pdo);
         $_SESSION['academic_year_schema_v2_ready'] = true;
@@ -104,7 +108,10 @@ function routeAction($action, $args, $pdo) {
             return getAdminTeacherListWithAvatars($pdo);
 
         case 'adminUpdateTeacherAssignment':
-            return adminUpdateTeacherAssignment($args[0], $args[1] ?? '', $args[2] ?? '', $pdo);
+            return adminUpdateTeacherAssignment($args[0], $args[1] ?? '', $args[2] ?? '', $pdo, $args[3] ?? 'active');
+
+        case 'adminUpdateTeacherStatus':
+            return adminUpdateTeacherStatus($args[0], $args[1] ?? 'active', $pdo);
 
         case 'adminCreateActivity':
             return adminCreateActivity($args[0] ?? [], $pdo);
@@ -429,6 +436,10 @@ function processLogin($user, $pass, $pdo) {
     if (!$foundUser) {
         return ['success' => false, 'message' => 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง!'];
     }
+
+    if (($foundUser['teacher_status'] ?? 'active') !== 'active' && !in_array(trim($foundUser['username']), ['1240800191192', '1229900316190'], true)) {
+        return ['success' => false, 'message' => 'บัญชีครูนี้ถูกปิดการใช้งาน กรุณาติดต่อผู้ดูแลระบบ'];
+    }
     
     $username = $foundUser['username'];
     $isAdmin = ($username === '1240800191192' || $username === '1229900316190');
@@ -563,7 +574,7 @@ function adminRemoveTeacherAvatar($userId, $pdo) {
 function getAdminTeacherListWithAvatars($pdo) {
     try {
         requireAdminSession();
-        $stmt = $pdo->query("SELECT id, username, name, advisory_room, head_level, avatar FROM users ORDER BY id ASC");
+        $stmt = $pdo->query("SELECT id, username, name, advisory_room, head_level, avatar, teacher_status, teacher_status_updated_at FROM users ORDER BY id ASC");
         return ['success' => true, 'teachers' => $stmt->fetchAll(PDO::FETCH_ASSOC)];
     } catch (Exception $e) {
         return ['success' => false, 'message' => $e->getMessage()];
@@ -1464,13 +1475,15 @@ function saveActivityMatrix($level, $room, $rows, $teacherName, $pdo) {
     }
 }
 
-function adminUpdateTeacherAssignment($userId, $advisoryRoom, $headLevel, $pdo) {
+function adminUpdateTeacherAssignment($userId, $advisoryRoom, $headLevel, $pdo, $teacherStatus = 'active') {
     requireAdminSession();
     $userId = filter_var($userId, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
     if ($userId === false) throw new InvalidArgumentException('รหัสบัญชีครูไม่ถูกต้อง');
 
     $advisoryRoom = trim((string)$advisoryRoom);
     $headLevel = trim((string)$headLevel);
+    $teacherStatus = trim((string)$teacherStatus);
+    if (!in_array($teacherStatus, ['active', 'inactive'], true)) throw new InvalidArgumentException('สถานะครูไม่ถูกต้อง');
     if ($advisoryRoom !== '' && !preg_match('/^ม\.[1-6]\/[1-6]$/u', $advisoryRoom)) {
         throw new InvalidArgumentException('ห้องที่ปรึกษาต้องเป็น ม.1/1 ถึง ม.6/6');
     }
@@ -1482,9 +1495,16 @@ function adminUpdateTeacherAssignment($userId, $advisoryRoom, $headLevel, $pdo) 
     $stmt->execute([$userId]);
     $teacher = $stmt->fetch(PDO::FETCH_ASSOC);
     if (!$teacher) throw new RuntimeException('ไม่พบบัญชีครูที่ต้องการแก้ไข');
+    if ($teacherStatus !== 'active') {
+        $identity = $pdo->prepare("SELECT username FROM users WHERE id = ? LIMIT 1");
+        $identity->execute([$userId]);
+        if (in_array(trim((string)$identity->fetchColumn()), ['1240800191192', '1229900316190'], true)) {
+            throw new RuntimeException('ไม่สามารถปิดบัญชีผู้ดูแลระบบหลักได้');
+        }
+    }
 
-    $update = $pdo->prepare("UPDATE users SET advisory_room = ?, head_level = ? WHERE id = ?");
-    $update->execute([$advisoryRoom !== '' ? $advisoryRoom : null, $headLevel !== '' ? $headLevel : null, $userId]);
+    $update = $pdo->prepare("UPDATE users SET advisory_room = ?, head_level = ?, teacher_status = ?, teacher_status_updated_at = NOW() WHERE id = ?");
+    $update->execute([$advisoryRoom !== '' ? $advisoryRoom : null, $headLevel !== '' ? $headLevel : null, $teacherStatus, $userId]);
 
     return [
         'success' => true,
@@ -1493,9 +1513,39 @@ function adminUpdateTeacherAssignment($userId, $advisoryRoom, $headLevel, $pdo) 
             'id' => (int)$userId,
             'name' => $teacher['name'],
             'advisory_room' => $advisoryRoom,
-            'head_level' => $headLevel
+            'head_level' => $headLevel,
+            'teacher_status' => $teacherStatus
         ]
     ];
+}
+
+function adminUpdateTeacherStatus($userId, $status, $pdo) {
+    requireAdminSession();
+    $userId = filter_var($userId, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+    if ($userId === false) throw new InvalidArgumentException('รหัสบัญชีครูไม่ถูกต้อง');
+    $status = trim((string)$status);
+    if (!in_array($status, ['active', 'inactive'], true)) throw new InvalidArgumentException('สถานะครูไม่ถูกต้อง');
+    $stmt = $pdo->prepare("SELECT id, username, name FROM users WHERE id = ? LIMIT 1");
+    $stmt->execute([$userId]);
+    $teacher = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$teacher) throw new RuntimeException('ไม่พบบัญชีครูที่ต้องการแก้ไข');
+    if (in_array(trim($teacher['username']), ['1240800191192', '1229900316190'], true) && $status !== 'active') {
+        throw new RuntimeException('ไม่สามารถปิดบัญชีผู้ดูแลระบบหลักได้');
+    }
+    $update = $pdo->prepare("UPDATE users SET teacher_status = ?, teacher_status_updated_at = NOW() WHERE id = ?");
+    $update->execute([$status, $userId]);
+    return ['success' => true, 'message' => $status === 'active' ? 'เปิดบัญชีครูเรียบร้อยแล้ว' : 'ปิดการใช้งานบัญชีครูเรียบร้อยแล้ว', 'teacher' => ['id' => (int)$userId, 'teacher_status' => $status]];
+}
+
+function ensureTeacherStatusSchema($pdo) {
+    try {
+        $hasStatus = $pdo->query("SHOW COLUMNS FROM users LIKE 'teacher_status'")->fetch(PDO::FETCH_ASSOC);
+        if (!$hasStatus) $pdo->exec("ALTER TABLE users ADD COLUMN teacher_status VARCHAR(20) NOT NULL DEFAULT 'active'");
+        $hasUpdated = $pdo->query("SHOW COLUMNS FROM users LIKE 'teacher_status_updated_at'")->fetch(PDO::FETCH_ASSOC);
+        if (!$hasUpdated) $pdo->exec("ALTER TABLE users ADD COLUMN teacher_status_updated_at DATETIME NULL");
+    } catch (Exception $e) {
+        // Keep existing installations usable if the database user cannot alter schema.
+    }
 }
 
 function requireAdminSession() {
