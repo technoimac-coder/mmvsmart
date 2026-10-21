@@ -3347,9 +3347,10 @@ function addClubAdminRole($username, $pdo) {
     try {
         requireAdminSession();
         $username = trim((string)$username);
-        $check = $pdo->prepare("SELECT COUNT(*) FROM users WHERE username = ?");
-        $check->execute([$username]);
-        if (!(int)$check->fetchColumn()) throw new InvalidArgumentException('ไม่พบบัญชีครูที่เลือก');
+        $check = $pdo->prepare("SELECT username FROM users WHERE username = ? OR name = ? LIMIT 1");
+        $check->execute([$username, $username]);
+        $username = trim((string)$check->fetchColumn());
+        if ($username === '') throw new InvalidArgumentException('ไม่พบบัญชีครูที่เลือก');
         $stmt = $pdo->prepare("INSERT INTO club_admins (username) VALUES (?) ON DUPLICATE KEY UPDATE username = username");
         $stmt->execute([$username]);
         return ['success' => true, 'message' => "เพิ่มสิทธิ์ให้ครูท่านนี้เป็นผู้ดูแลระบบชุมนุมเรียบร้อยแล้ว!"];
@@ -3545,9 +3546,10 @@ function addActivityAdminRole($username, $pdo) {
         requireAdminSession();
         ensureActivityAdminSchema($pdo);
         $username = trim((string)$username);
-        $check = $pdo->prepare("SELECT COUNT(*) FROM users WHERE username = ?");
-        $check->execute([$username]);
-        if (!(int)$check->fetchColumn()) throw new InvalidArgumentException('ไม่พบบัญชีครูที่เลือก');
+        $check = $pdo->prepare("SELECT username FROM users WHERE username = ? OR name = ? LIMIT 1");
+        $check->execute([$username, $username]);
+        $username = trim((string)$check->fetchColumn());
+        if ($username === '') throw new InvalidArgumentException('ไม่พบบัญชีครูที่เลือก');
         $stmt = $pdo->prepare("INSERT INTO activity_admins (username) VALUES (?) ON DUPLICATE KEY UPDATE username = username");
         $stmt->execute([$username]);
         return ['success' => true, 'message' => 'เพิ่มสิทธิ์ให้ครูท่านนี้เป็นผู้ดูแลระบบกิจกรรมเรียบร้อยแล้ว กรุณาให้ครูออกจากระบบและเข้าสู่ระบบใหม่'];
