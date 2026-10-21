@@ -2292,8 +2292,11 @@
         const statusInfo = (t.teacher_status || 'active') === 'active'
           ? '<span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill" style="font-size:0.7rem;">ใช้งาน</span>'
           : '<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle rounded-pill" style="font-size:0.7rem;">พ้นสภาพ / ไม่ใช้งาน</span>';
-        const roleInfo = `${Number(t.is_club_admin) ? '<span class="badge bg-purple-subtle text-purple border rounded-pill" style="font-size:0.65rem;">ผู้ดูแลชุมนุม</span>' : ''} ${Number(t.is_activity_admin) ? '<span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill" style="font-size:0.65rem;">ผู้ดูแลกิจกรรม</span>' : ''}`;
-        const roleButtons = `${Number(t.is_club_admin) ? `<button class="btn btn-sm btn-outline-danger py-0 px-1" onclick="removeTeacherAdminRole('${safeName}','club')" title="ยกเลิกสิทธิ์ผู้ดูแลระบบชุมนุม">ยกเลิกชุมนุม</button>` : ''} ${Number(t.is_activity_admin) ? `<button class="btn btn-sm btn-outline-danger py-0 px-1" onclick="removeTeacherAdminRole('${safeName}','activity')" title="ยกเลิกสิทธิ์ผู้ดูแลระบบกิจกรรม">ยกเลิกกิจกรรม</button>` : ''}`;
+        const roleBadges = [];
+        if (Number(t.is_club_admin) === 1) roleBadges.push('<span class="badge rounded-pill" style="font-size:0.65rem;background:#ede9fe;color:#6d28d9;border:1px solid #c4b5fd;">ผู้ดูแลชุมนุม</span>');
+        if (Number(t.is_activity_admin) === 1) roleBadges.push('<span class="badge rounded-pill" style="font-size:0.65rem;background:#dcfce7;color:#15803d;border:1px solid #86efac;">ผู้ดูแลกิจกรรม</span>');
+        const roleInfo = roleBadges.length ? roleBadges.join(' ') : '';
+        const roleButtons = `${Number(t.is_club_admin) === 1 ? `<button class="btn btn-sm btn-outline-danger py-0 px-1" onclick="removeTeacherAdminRole('${safeName}','club')" title="ยกเลิกสิทธิ์ผู้ดูแลระบบชุมนุม">ยกเลิกชุมนุม</button>` : ''} ${Number(t.is_activity_admin) === 1 ? `<button class="btn btn-sm btn-outline-danger py-0 px-1" onclick="removeTeacherAdminRole('${safeName}','activity')" title="ยกเลิกสิทธิ์ผู้ดูแลระบบกิจกรรม">ยกเลิกกิจกรรม</button>` : ''}`;
 
         return `
           <div class="col-12 col-md-6 teacher-avatar-card" data-name="${t.name.toLowerCase()}" data-status="${status}">
