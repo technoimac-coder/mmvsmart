@@ -3347,8 +3347,10 @@ function addClubAdminRole($username, $pdo) {
     try {
         requireAdminSession();
         $username = trim((string)$username);
-        $check = $pdo->prepare("SELECT username FROM users WHERE username = ? OR name = ? LIMIT 1");
-        $check->execute([$username, $username]);
+        if (preg_match('/\(([^()]+)\)$/u', $username, $match)) $username = trim($match[1]);
+        $nameLookup = preg_replace('/^(ครู|นาย|นางสาว|นาง)\s*/u', '', $username);
+        $check = $pdo->prepare("SELECT username FROM users WHERE username = ? OR name = ? OR name = ? OR REPLACE(REPLACE(REPLACE(name, 'ครู', ''), 'นาย', ''), 'นางสาว', '') = ? LIMIT 1");
+        $check->execute([$username, $username, $nameLookup, $nameLookup]);
         $username = trim((string)$check->fetchColumn());
         if ($username === '') throw new InvalidArgumentException('ไม่พบบัญชีครูที่เลือก');
         $stmt = $pdo->prepare("INSERT INTO club_admins (username) VALUES (?) ON DUPLICATE KEY UPDATE username = username");
@@ -3546,8 +3548,10 @@ function addActivityAdminRole($username, $pdo) {
         requireAdminSession();
         ensureActivityAdminSchema($pdo);
         $username = trim((string)$username);
-        $check = $pdo->prepare("SELECT username FROM users WHERE username = ? OR name = ? LIMIT 1");
-        $check->execute([$username, $username]);
+        if (preg_match('/\(([^()]+)\)$/u', $username, $match)) $username = trim($match[1]);
+        $nameLookup = preg_replace('/^(ครู|นาย|นางสาว|นาง)\s*/u', '', $username);
+        $check = $pdo->prepare("SELECT username FROM users WHERE username = ? OR name = ? OR name = ? OR REPLACE(REPLACE(REPLACE(name, 'ครู', ''), 'นาย', ''), 'นางสาว', '') = ? LIMIT 1");
+        $check->execute([$username, $username, $nameLookup, $nameLookup]);
         $username = trim((string)$check->fetchColumn());
         if ($username === '') throw new InvalidArgumentException('ไม่พบบัญชีครูที่เลือก');
         $stmt = $pdo->prepare("INSERT INTO activity_admins (username) VALUES (?) ON DUPLICATE KEY UPDATE username = username");
