@@ -2292,6 +2292,8 @@
         const statusInfo = (t.teacher_status || 'active') === 'active'
           ? '<span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill" style="font-size:0.7rem;">ใช้งาน</span>'
           : '<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle rounded-pill" style="font-size:0.7rem;">พ้นสภาพ / ไม่ใช้งาน</span>';
+        const roleInfo = `${Number(t.is_club_admin) ? '<span class="badge bg-purple-subtle text-purple border rounded-pill" style="font-size:0.65rem;">ผู้ดูแลชุมนุม</span>' : ''} ${Number(t.is_activity_admin) ? '<span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill" style="font-size:0.65rem;">ผู้ดูแลกิจกรรม</span>' : ''}`;
+        const roleButtons = `${Number(t.is_club_admin) ? `<button class="btn btn-sm btn-outline-danger py-0 px-1" onclick="removeTeacherAdminRole('${safeName}','club')" title="ยกเลิกสิทธิ์ผู้ดูแลระบบชุมนุม">ยกเลิกชุมนุม</button>` : ''} ${Number(t.is_activity_admin) ? `<button class="btn btn-sm btn-outline-danger py-0 px-1" onclick="removeTeacherAdminRole('${safeName}','activity')" title="ยกเลิกสิทธิ์ผู้ดูแลระบบกิจกรรม">ยกเลิกกิจกรรม</button>` : ''}`;
 
         return `
           <div class="col-12 col-md-6 teacher-avatar-card" data-name="${t.name.toLowerCase()}" data-status="${status}">
@@ -2300,7 +2302,7 @@
                 ${avatarHtml}
                 <div style="min-width: 0;">
                   <div class="fw-bold text-dark text-truncate mb-0" style="font-size: 0.95rem;" title="${t.name}">ครู${t.name}</div>
-                  <div class="mt-1">${statusInfo}</div>${roomInfo}
+                  <div class="mt-1">${statusInfo} ${roleInfo}</div>${roomInfo}${roleButtons ? `<div class="mt-1 d-flex gap-1 flex-wrap">${roleButtons}</div>` : ''}
                 </div>
               </div>
               <div class="d-flex align-items-center gap-2 ps-2 flex-shrink-0">
@@ -2370,6 +2372,18 @@
           Swal.fire('บันทึกไม่สำเร็จ', err.message || 'เกิดข้อผิดพลาด', 'error');
         })
         .adminUpdateTeacherAssignment(id, advisoryValue, headLevelValue, statusValue);
+    }
+
+    function removeTeacherAdminRole(teacherName, role) {
+      const label = role === 'club' ? 'ผู้ดูแลระบบชุมนุม' : 'ผู้ดูแลระบบกิจกรรม';
+      Swal.fire({title: `ยกเลิกสิทธิ์${label}?`, text: `ครู${teacherName} จะไม่สามารถเข้าเมนูนี้ได้ แต่ข้อมูลเดิมจะไม่ถูกลบ`, icon: 'warning', showCancelButton: true, confirmButtonText: 'ยืนยันยกเลิกสิทธิ์', cancelButtonText: 'ยกเลิก', confirmButtonColor: '#dc3545'}).then(result => {
+        if (!result.isConfirmed) return;
+        google.script.run.withSuccessHandler(res => {
+          if (!res || !res.success) return Swal.fire('ดำเนินการไม่สำเร็จ', res?.message || 'เกิดข้อผิดพลาด', 'error');
+          Swal.fire('สำเร็จ', res.message, 'success');
+          loadAdminTeacherAvatarsList();
+        }).withFailureHandler(err => Swal.fire('ดำเนินการไม่สำเร็จ', err.message || 'เกิดข้อผิดพลาด', 'error')).removeTeacherAdminRole(teacherName, role);
+      });
     }
 
     let currentUploadTeacherId = null;

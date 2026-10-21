@@ -328,6 +328,12 @@ function routeAction($action, $args, $pdo) {
 
         case 'addActivityAdminRole':
             return addActivityAdminRole($args[0], $pdo);
+
+        case 'removeTeacherAdminRole':
+            return removeTeacherAdminRole($args[0], $args[1] ?? '', $pdo);
+
+        case 'getTeacherAdminRoles':
+            return getTeacherAdminRoles($pdo);
             
         case 'getClubsListAdmin':
             return getClubsListAdmin($pdo);
@@ -574,7 +580,11 @@ function adminRemoveTeacherAvatar($userId, $pdo) {
 function getAdminTeacherListWithAvatars($pdo) {
     try {
         requireAdminSession();
-        $stmt = $pdo->query("SELECT id, username, name, advisory_room, head_level, avatar, teacher_status, teacher_status_updated_at FROM users ORDER BY id ASC");
+        ensureActivityAdminSchema($pdo);
+        $stmt = $pdo->query("SELECT u.id, u.username, u.name, u.advisory_room, u.head_level, u.avatar, u.teacher_status, u.teacher_status_updated_at,
+            EXISTS (SELECT 1 FROM club_admins c WHERE c.username = u.username) AS is_club_admin,
+            EXISTS (SELECT 1 FROM activity_admins a WHERE a.username = u.username) AS is_activity_admin
+            FROM users u ORDER BY u.id ASC");
         return ['success' => true, 'teachers' => $stmt->fetchAll(PDO::FETCH_ASSOC)];
     } catch (Exception $e) {
         return ['success' => false, 'message' => $e->getMessage()];
@@ -3560,6 +3570,40 @@ function addActivityAdminRole($username, $pdo) {
     } catch (Exception $e) {
         return ['success' => false, 'message' => $e->getMessage()];
     }
+}
+
+function removeTeacherAdminRole($username, $role, $pdo) {
+    requireAdminSession();
+    ensureActivityAdminSchema($pdo);
+    $username = trim((string)$username);
+    $role = trim((string)$role);
+    if (preg_match('/\(([^()]+)\)$/u', $username, $match)) $username = trim($match[1]);
+    $lookup = $pdo->prepare("SELECT username FROM users WHERE username = ? OR name = ? LIMIT 1");
+    $lookup->execute([$username, $username]);
+    $resolved = trim((string)$lookup->fetchColumn());
+    if ($resolved === '') throw new InvalidArgumentException('ไม่พบบัญชีครูที่เลือก');
+    if ($role === 'club') {
+        $stmt = $pdo->prepare('DELETE FROM club_admins WHERE username = ?');
+        $stmt->execute([$resolved]);
+        return ['success' => true, 'message' => 'ยกเลิกสิทธิ์ผู้ดูแลระบบชุมนุมแล้ว'];
+    }
+    if ($role === 'activity') {
+        $stmt = $pdo->prepare('DELETE FROM activity_admins WHERE username = ?');
+        $stmt->execute([$resolved]);
+        return ['success' => true, 'message' => 'ยกเลิกสิทธิ์ผู้ดูแลระบบกิจกรรมแล้ว'];
+    }
+    throw new InvalidArgumentException('ประเภทสิทธิ์ไม่ถูกต้อง');
+}
+
+function getTeacherAdminRoles($pdo) {
+    requireAdminSession();
+    ensureActivityAdminSchema($pdo);
+    $stmt = $pdo->query("SELECT u.id, u.username, u.name,
+        EXISTS (SELECT 1 FROM club_admins c WHERE c.username = u.username) AS is_club_admin,
+        EXISTS (SELECT 1 FROM activity_admins a WHERE a.username = u.username) AS is_activity_admin
+        FROM users u WHERE EXISTS (SELECT 1 FROM club_admins c WHERE c.username = u.username)
+           OR EXISTS (SELECT 1 FROM activity_admins a WHERE a.username = u.username) ORDER BY u.name ASC");
+    return ['success' => true, 'teachers' => $stmt->fetchAll(PDO::FETCH_ASSOC)];
 }
 
 function checkIfClubAdmin($username, $pdo) {
