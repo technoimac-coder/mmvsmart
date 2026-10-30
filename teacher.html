@@ -1714,6 +1714,7 @@
                 <div class="col-4 col-md-2"><label class="form-label small fw-bold">ห้อง</label><select id="adminActivityReportRoom" class="form-select"><option value="">เลือกห้อง</option><option value="all">ทุกห้องในระดับ</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option></select></div>
                 <div class="col-3 col-md-2"><button id="btnLoadAdminActivityReport" type="button" class="btn btn-primary w-100 fw-bold" onclick="loadAdminActivityReport()"><i class="fas fa-search me-1"></i>ดูรายงาน</button></div>
                 <div class="col-12 col-md-2"><button id="btnPrintAdminActivityReport" type="button" class="btn btn-outline-danger w-100 fw-bold" onclick="printAdminActivityReport()" disabled><i class="fas fa-file-pdf me-1"></i>พิมพ์ PDF</button></div>
+                <div class="col-12 col-md-2"><button id="btnExportAdminActivityExcel" type="button" class="btn btn-outline-success w-100 fw-bold" onclick="exportAdminActivityExcel()" disabled><i class="fas fa-file-excel me-1"></i>Excel</button></div>
               </div>
               <div id="adminActivityReportSummary" class="alert alert-light border py-2 mb-2">เลือกชั้นและห้องเพื่อดูรายงาน</div>
               <div id="adminActivityReportList" class="mb-3"></div>
@@ -4826,6 +4827,19 @@ function loadTeachersForClub() {
       popup.document.close();
     }
 
+    function exportAdminActivityExcel() {
+      if (!lastAdminActivityReport) return Swal.fire('ยังไม่มีรายงาน', 'กรุณากดดูรายงานก่อนส่งออก Excel', 'info');
+      if (!window.XLSX) return Swal.fire('ไม่พร้อมใช้งาน', 'ไม่พบตัวส่งออก Excel กรุณารีเฟรชหน้าเว็บ', 'error');
+      const report = lastAdminActivityReport;
+      const rows = [['รายงานเช็คกิจกรรมห้องเรียน'], ['ปีการศึกษา', report.academicYear, 'ภาคเรียนที่', Number(report.semester), 'ระดับชั้น', report.level, 'ห้อง', report.room === 'all' ? 'ทุกห้อง' : report.room], [], ['เลขที่','รหัสนักเรียน','ชื่อ-นามสกุล','ห้อง','เข้าร่วม','ลา','ไม่เข้าร่วม','ยังไม่เช็ก','ร้อยละ','ผล']];
+      (report.students || []).forEach(student => rows.push([student.no, student.id, student.name, student.room || report.room, Number(student.joined || 0), Number(student.leave || 0), Number(student.absent || 0), Number(student.unchecked || 0), Number(student.percent || 0) / 100, student.passed ? 'ผ่าน' : 'ไม่ผ่าน']));
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+      ws['!cols'] = [{wch:8},{wch:16},{wch:30},{wch:8},{wch:10},{wch:8},{wch:12},{wch:12},{wch:10},{wch:12}];
+      const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'รายงานกิจกรรม');
+      const safeLevel = String(report.level || '').replace(/[^ก-๙A-Za-z0-9.]/g, '');
+      XLSX.writeFile(wb, `รายงานกิจกรรม_${safeLevel}_${report.room === 'all' ? 'ทุกห้อง' : report.room}_ปี${report.academicYear}_เทอม${report.semester}.xlsx`);
+    }
+
     function loadAdminActivityReport() {
       const level = document.getElementById('adminActivityReportLevel').value;
       const room = document.getElementById('adminActivityReportRoom').value;
@@ -4850,6 +4864,7 @@ function loadTeachersForClub() {
         button.innerHTML = '<i class="fas fa-search me-1"></i>ดูรายงาน';
         lastAdminActivityReport = res;
         document.getElementById('btnPrintAdminActivityReport').disabled = false;
+        document.getElementById('btnExportAdminActivityExcel').disabled = false;
         const activities = res.activities || [];
         const students = res.students || [];
         summary.className = 'alert alert-info border py-2 mb-2';
