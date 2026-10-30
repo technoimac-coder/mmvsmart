@@ -235,6 +235,9 @@ function routeAction($action, $args, $pdo) {
             
         case 'getAllStudentsForDeduct':
             return getAllStudentsForDeduct($pdo);
+
+        case 'getAllStudentsForExport':
+            return getAllStudentsForExport($pdo);
             
         case 'saveMultipleDeductions':
             return saveMultipleDeductions($args[0], $args[1], $args[2], $args[3], $args[4], $pdo);
@@ -2444,6 +2447,12 @@ function getAllStudentsForDeduct($pdo) {
         ];
     }
     return $students;
+}
+
+function getAllStudentsForExport($pdo) {
+    requireAdminSession();
+    $stmt = $pdo->query("SELECT student_id, name, level, room FROM students WHERE is_active = 1 ORDER BY CAST(SUBSTRING_INDEX(level, '.', -1) AS UNSIGNED), CAST(room AS UNSIGNED), CAST(no AS UNSIGNED), name ASC");
+    return ['success' => true, 'students' => $stmt->fetchAll(PDO::FETCH_ASSOC)];
 }
 
 function saveMultipleDeductions($dateTime, $studentsArray, $reason, $points, $teacherName, $pdo) {

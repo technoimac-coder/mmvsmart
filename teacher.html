@@ -1617,7 +1617,7 @@
                   <h6 class="fw-bold text-primary mb-1"><i class="fas fa-users-gear me-1"></i> จัดการรายชื่อนักเรียนรายห้อง</h6>
                   <small class="text-muted">แก้ไขเลขที่ ชื่อ หรือย้ายห้อง และปิดใช้งานนักเรียนที่ลาออกกลางคันโดยไม่ลบประวัติเดิม</small>
                 </div>
-                <button class="btn btn-sm btn-outline-secondary" onclick="loadRecentRosterChanges()"><i class="fas fa-clock-rotate-left me-1"></i>ประวัติการแก้ไข</button>
+                <div class="d-flex gap-2"><button class="btn btn-sm btn-outline-success" onclick="exportAllStudentsExcel()"><i class="fas fa-file-excel me-1"></i>ส่งออก Excel</button><button class="btn btn-sm btn-outline-secondary" onclick="loadRecentRosterChanges()"><i class="fas fa-clock-rotate-left me-1"></i>ประวัติการแก้ไข</button></div>
               </div>
               <div class="row g-2 align-items-end mb-3">
                 <div class="col-6 col-md-2">
@@ -4256,6 +4256,26 @@ function loadTeachersForClub() {
       if(!no || !id || !name || !level || !room) { Swal.fire('แจ้งเตือน', 'กรุณากรอกข้อมูลให้ครบถ้วน', 'warning'); return; }
       const btn = document.getElementById('btnAdminAddStudent'); btn.innerText = 'กำลังบันทึก...'; btn.disabled = true;
       google.script.run.withSuccessHandler(res => { Swal.fire(res.success?'สำเร็จ':'ผิดพลาด', res.message, res.success?'success':'error'); btn.innerText = 'บันทึกข้อมูลนักเรียน'; btn.disabled = false; if(res.success) { document.getElementById('adminStuNo').value = ''; document.getElementById('adminStuId').value = ''; document.getElementById('adminStuName').value = ''; } }).adminAddStudent(no, id, name, level, room);
+    }
+
+    function exportAllStudentsExcel() {
+      if (!window.XLSX) return Swal.fire('ไม่พร้อมใช้งาน', 'ไม่พบตัวส่งออก Excel กรุณารีเฟรชหน้าเว็บ', 'error');
+      google.script.run.withSuccessHandler(res => {
+        if (!res || !res.success) return Swal.fire('ส่งออกไม่สำเร็จ', res?.message || 'เกิดข้อผิดพลาด', 'error');
+        const headers = ['รหัสนักเรียน','ชื่อ-นามสกุล','ชั้น','ห้อง'];
+        const students = res.students || [];
+        const wb = XLSX.utils.book_new();
+        const allRows = [headers, ...students.map(student => [student.student_id, student.name, student.level, student.room])];
+        const allWs = XLSX.utils.aoa_to_sheet(allRows); allWs['!cols'] = [{wch:18},{wch:32},{wch:12},{wch:8}];
+        XLSX.utils.book_append_sheet(wb, allWs, 'ทั้งหมด');
+        [...new Set(students.map(student => `${student.level}_${student.room}`))].forEach(key => {
+          const roomStudents = students.filter(student => `${student.level}_${student.room}` === key);
+          const ws = XLSX.utils.aoa_to_sheet([headers, ...roomStudents.map(student => [student.student_id, student.name, student.level, student.room])]);
+          ws['!cols'] = [{wch:18},{wch:32},{wch:12},{wch:8}];
+          XLSX.utils.book_append_sheet(wb, ws, key.replace('.', '').slice(0, 31));
+        });
+        XLSX.writeFile(wb, `รายชื่อนักเรียน_แยกชั้นห้อง.xlsx`);
+      }).withFailureHandler(err => Swal.fire('ส่งออกไม่สำเร็จ', err.message || 'เกิดข้อผิดพลาด', 'error')).getAllStudentsForExport();
     }
 
     function loadManagedRoster() {
