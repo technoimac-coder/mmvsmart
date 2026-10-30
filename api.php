@@ -1695,8 +1695,13 @@ function adminBulkMoveStudents($rows, $pdo) {
         $pdo->beginTransaction();
         $find = $pdo->prepare("SELECT no, student_id, name, level, room, is_active, academic_year FROM students WHERE student_id = ? FOR UPDATE");
         $batchIds = array_column($normalized, 'studentId');
+        $reservedTargets = [];
+        foreach ($normalized as $reserved) $reservedTargets[$reserved['level'] . '/' . $reserved['room'] . '/' . (int)$reserved['no']] = true;
         $batchPlaceholders = implode(',', array_fill(0, count($batchIds), '?'));
         $checkTarget = $pdo->prepare("SELECT COUNT(*) FROM students WHERE is_active = 1 AND level = ? AND room = ? AND no = ? AND student_id NOT IN ($batchPlaceholders)");
+        $findConflict = $pdo->prepare("SELECT student_id, name, no, level, room, is_active, academic_year FROM students WHERE is_active = 1 AND level = ? AND room = ? AND no = ? AND student_id NOT IN ($batchPlaceholders) LIMIT 1 FOR UPDATE");
+        $maxNo = $pdo->prepare("SELECT COALESCE(MAX(CAST(no AS UNSIGNED)), 0) FROM students WHERE is_active = 1 AND level = ? AND room = ?");
+        $moveConflict = $pdo->prepare("UPDATE students SET no = ? WHERE student_id = ?");
         $update = $pdo->prepare("UPDATE students SET no = ?, name = ?, level = ?, room = ? WHERE student_id = ?");
         $clubUpdate = $pdo->prepare("UPDATE club_members SET level = ?, room = ? WHERE student_id = ?");
         $changed = 0; $unchanged = 0; $missing = [];
@@ -1708,7 +1713,16 @@ function adminBulkMoveStudents($rows, $pdo) {
             if ((int)$old['is_active'] === 1) {
                 $checkTarget->execute(array_merge([$item['level'], $item['room'], $item['no']], $batchIds));
                 if ((int)$checkTarget->fetchColumn() > 0) {
-                    throw new RuntimeException('เลขที่ ' . $item['no'] . ' มีนักเรียนใช้งานอยู่แล้วใน ' . $item['level'] . '/' . $item['room'] . ' (' . $item['studentId'] . ')');
+                    $findConflict->execute(array_merge([$item['level'], $item['room'], $item['no']], $batchIds));
+                    $conflict = $findConflict->fetch(PDO::FETCH_ASSOC);
+                    $maxNo->execute([$item['level'], $item['room']]);
+                    $replacementNo = max((int)$maxNo->fetchColumn() + 1, (int)$item['no'] + 1);
+                    while (isset($reservedTargets[$item['level'] . '/' . $item['room'] . '/' . $replacementNo])) $replacementNo++;
+                    if ($conflict) {
+                        $moveConflict->execute([(string)$replacementNo, $conflict['student_id']]);
+                        $conflictNew = array_merge($conflict, ['no' => (string)$replacementNo]);
+                        writeStudentRosterChange($pdo, $conflict['student_id'], 'bulk_room_move_auto_renumber', $conflict, $conflictNew, 'ปรับเลขที่อัตโนมัติเนื่องจากไฟล์ใหม่เป็นหลัก', $adminName);
+                    }
                 }
             }
             $update->execute([$item['no'], $item['name'], $item['level'], $item['room'], $item['studentId']]);
