@@ -1671,41 +1671,49 @@ function adminBulkMoveStudents($rows, $pdo) {
 
     $normalized = [];
     $seen = [];
+    $seenTargets = [];
     foreach ($rows as $index => $row) {
         if (!is_array($row)) throw new InvalidArgumentException('รูปแบบรายการแถวที่ ' . ($index + 1) . ' ไม่ถูกต้อง');
         $studentId = validateStudentIdValue($row['studentId'] ?? ($row['student_id'] ?? ''));
+        $no = trim((string)($row['no'] ?? ''));
         $name = trim((string)($row['name'] ?? ''));
         $level = trim((string)($row['level'] ?? ''));
         $room = trim((string)($row['room'] ?? ''));
         if ($name === '' || mb_strlen($name, 'UTF-8') > 255 || preg_match('/[<>{}\x00-\x1F]/u', $name)) throw new InvalidArgumentException('ชื่อ-สกุลของแถวที่ ' . ($index + 1) . ' ไม่ถูกต้อง');
+        if (!preg_match('/^[0-9]{1,3}$/', $no) || (int)$no < 1) throw new InvalidArgumentException('เลขที่ของแถวที่ ' . ($index + 1) . ' ไม่ถูกต้อง');
         if (!preg_match('/^ม\.[1-6]$/u', $level)) throw new InvalidArgumentException('ชั้นของแถวที่ ' . ($index + 1) . ' ต้องเป็น ม.1 ถึง ม.6');
         if (!preg_match('/^[1-6]$/', $room)) throw new InvalidArgumentException('ห้องของแถวที่ ' . ($index + 1) . ' ต้องเป็น 1 ถึง 6');
         if (isset($seen[$studentId])) throw new InvalidArgumentException('รหัสนักเรียนซ้ำในไฟล์: ' . $studentId);
+        $targetKey = $level . '/' . $room . '/' . (int)$no;
+        if (isset($seenTargets[$targetKey])) throw new InvalidArgumentException('เลขที่ซ้ำในไฟล์: ' . $targetKey);
         $seen[$studentId] = true;
-        $normalized[] = ['studentId' => $studentId, 'name' => $name, 'level' => $level, 'room' => $room];
+        $seenTargets[$targetKey] = true;
+        $normalized[] = ['no' => (string)(int)$no, 'studentId' => $studentId, 'name' => $name, 'level' => $level, 'room' => $room];
     }
 
     try {
         $pdo->beginTransaction();
         $find = $pdo->prepare("SELECT no, student_id, name, level, room, is_active, academic_year FROM students WHERE student_id = ? FOR UPDATE");
-        $checkTarget = $pdo->prepare("SELECT COUNT(*) FROM students WHERE is_active = 1 AND level = ? AND room = ? AND no = ? AND student_id <> ?");
-        $update = $pdo->prepare("UPDATE students SET name = ?, level = ?, room = ? WHERE student_id = ?");
+        $batchIds = array_column($normalized, 'studentId');
+        $batchPlaceholders = implode(',', array_fill(0, count($batchIds), '?'));
+        $checkTarget = $pdo->prepare("SELECT COUNT(*) FROM students WHERE is_active = 1 AND level = ? AND room = ? AND no = ? AND student_id NOT IN ($batchPlaceholders)");
+        $update = $pdo->prepare("UPDATE students SET no = ?, name = ?, level = ?, room = ? WHERE student_id = ?");
         $clubUpdate = $pdo->prepare("UPDATE club_members SET level = ?, room = ? WHERE student_id = ?");
         $changed = 0; $unchanged = 0; $missing = [];
         foreach ($normalized as $item) {
             $find->execute([$item['studentId']]);
             $old = $find->fetch();
             if (!$old) { $missing[] = $item['studentId']; continue; }
-            if ((string)$old['name'] === $item['name'] && (string)$old['level'] === $item['level'] && (string)$old['room'] === $item['room']) { $unchanged++; continue; }
+            if ((string)$old['no'] === $item['no'] && (string)$old['name'] === $item['name'] && (string)$old['level'] === $item['level'] && (string)$old['room'] === $item['room']) { $unchanged++; continue; }
             if ((int)$old['is_active'] === 1) {
-                $checkTarget->execute([$item['level'], $item['room'], $old['no'], $item['studentId']]);
+                $checkTarget->execute(array_merge([$item['level'], $item['room'], $item['no']], $batchIds));
                 if ((int)$checkTarget->fetchColumn() > 0) {
-                    throw new RuntimeException('เลขที่ ' . $old['no'] . ' มีนักเรียนใช้งานอยู่แล้วใน ' . $item['level'] . '/' . $item['room'] . ' (' . $item['studentId'] . ')');
+                    throw new RuntimeException('เลขที่ ' . $item['no'] . ' มีนักเรียนใช้งานอยู่แล้วใน ' . $item['level'] . '/' . $item['room'] . ' (' . $item['studentId'] . ')');
                 }
             }
-            $update->execute([$item['name'], $item['level'], $item['room'], $item['studentId']]);
+            $update->execute([$item['no'], $item['name'], $item['level'], $item['room'], $item['studentId']]);
             $clubUpdate->execute([$item['level'], $item['room'], $item['studentId']]);
-            $new = array_merge($old, ['name' => $item['name'], 'level' => $item['level'], 'room' => $item['room']]);
+            $new = array_merge($old, ['no' => $item['no'], 'name' => $item['name'], 'level' => $item['level'], 'room' => $item['room']]);
             writeStudentRosterChange($pdo, $item['studentId'], 'bulk_room_move', $old, $new, 'ปรับห้องจำนวนมากโดยไม่เปลี่ยนปีการศึกษา', $adminName);
             $changed++;
         }
