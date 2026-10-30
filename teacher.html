@@ -6238,6 +6238,7 @@ function loadTeachersForClub() {
             <td class="text-center">${statusBadge}</td>
             <td class="text-center">
               <button class="btn btn-sm ${toggleBtnClass} fw-bold" onclick="toggleStatus(${c.rowIndex}, '${c.status}')">${toggleBtnText}</button>
+              <button class="btn btn-sm btn-outline-danger fw-bold ms-1" onclick="deleteClubFromAdmin('${encodeURIComponent(c.name)}')" title="ลบชุมนุม"><i class="fas fa-trash-alt"></i></button>
             </td>
           </tr>`;
         }).join('');
@@ -6268,6 +6269,14 @@ function loadTeachersForClub() {
             }
           }).toggleClubStatus(rowIndex, currentStatus);
         }
+      });
+    }
+
+    function deleteClubFromAdmin(encodedName) {
+      const clubName = decodeURIComponent(encodedName || '');
+      Swal.fire({title:'ลบชุมนุมนี้หรือไม่?', text:`ชุมนุม “${clubName}” สมาชิก และประวัติการเช็กชื่อจะถูกลบถาวร`, icon:'warning', showCancelButton:true, confirmButtonText:'ลบถาวร', cancelButtonText:'ยกเลิก', confirmButtonColor:'#dc3545'}).then(result => {
+        if (!result.isConfirmed) return;
+        google.script.run.withSuccessHandler(res => { if (!res || !res.success) return Swal.fire('ลบไม่สำเร็จ', res?.message || 'เกิดข้อผิดพลาด', 'error'); Swal.fire('ลบเรียบร้อย', res.message, 'success'); loadClubsTable(); }).withFailureHandler(err => Swal.fire('ลบไม่สำเร็จ', err.message || 'เกิดข้อผิดพลาด', 'error')).deleteClubByAdmin(clubName);
       });
     }
     // ==========================================

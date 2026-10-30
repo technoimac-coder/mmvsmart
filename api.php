@@ -4109,6 +4109,26 @@ function addMultipleClubs($clubsArray, $pdo) {
     }
 }
 
+function deleteClubByAdmin($clubName, $pdo) {
+    requireAdminSession();
+    $clubName = trim((string)$clubName);
+    if ($clubName === '') throw new InvalidArgumentException('ไม่พบชื่อชุมนุม');
+    $check = $pdo->prepare('SELECT name FROM clubs WHERE name = ? LIMIT 1');
+    $check->execute([$clubName]);
+    if (!$check->fetchColumn()) throw new RuntimeException('ไม่พบชุมนุมที่ต้องการลบ');
+    try {
+        $pdo->beginTransaction();
+        $pdo->prepare('DELETE FROM club_attendance WHERE club_name = ?')->execute([$clubName]);
+        $pdo->prepare('DELETE FROM club_members WHERE club_name = ?')->execute([$clubName]);
+        $pdo->prepare('DELETE FROM clubs WHERE name = ?')->execute([$clubName]);
+        $pdo->commit();
+        return ['success' => true, 'message' => 'ลบชุมนุม สมาชิก และประวัติการเช็กชื่อเรียบร้อยแล้ว'];
+    } catch (Exception $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        throw $e;
+    }
+}
+
 function updateClubImage($clubName, $base64Data, $pdo) {
     try {
         if (!file_exists(__DIR__ . '/uploads/clubs')) {
