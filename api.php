@@ -1780,12 +1780,54 @@ function adminSetStudentActive($studentId, $active, $reason, $pdo) {
         $new = $old;
         $new['is_active'] = $active ? 1 : 0;
         writeStudentRosterChange($pdo, $studentId, $active ? 'reactivate' : 'deactivate', $old, $new, $reason, $adminName);
+        if (!$active) {
+            compactActiveRoomNumbers($pdo, $old['level'], $old['room'], $adminName);
+        }
         $pdo->commit();
-        return ['success' => true, 'message' => $active ? 'เปิดใช้งานนักเรียนเรียบร้อยแล้ว' : 'ปิดใช้งานนักเรียนเรียบร้อยแล้ว โดยยังเก็บประวัติเดิมทั้งหมด'];
+        return ['success' => true, 'message' => $active ? 'เปิดใช้งานนักเรียนเรียบร้อยแล้ว' : 'ปิดใช้งานนักเรียนเรียบร้อยแล้ว และจัดเลขที่ในห้องใหม่เรียบร้อย โดยยังเก็บประวัติเดิมทั้งหมด'];
     } catch (Exception $e) {
         if ($pdo->inTransaction()) $pdo->rollBack();
         throw $e;
     }
+}
+
+/**
+ * หลังปิดใช้งานนักเรียน ให้เลขที่ของนักเรียนที่ยังใช้งานในห้องเดียวกัน
+ * เรียงต่อกันเป็น 1..N เพื่อไม่ให้มีช่องว่าง โดยไม่แก้เลขที่ในประวัติย้อนหลัง
+ * (attendance/กิจกรรมเก็บเลขที่เดิมของวันที่บันทึกไว้แล้ว)
+ */
+function compactActiveRoomNumbers($pdo, $level, $room, $adminName) {
+    $stmt = $pdo->prepare("SELECT no, student_id, name, level, room, is_active, academic_year
+        FROM students WHERE is_active = 1 AND level = ? AND room = ?
+        ORDER BY CAST(no AS UNSIGNED), name, student_id FOR UPDATE");
+    $stmt->execute([$level, $room]);
+    $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    if (!$students) return 0;
+
+    $changed = [];
+    foreach ($students as $index => $student) {
+        $targetNo = (string)($index + 1);
+        if ((string)$student['no'] !== $targetNo) {
+            $changed[] = [$student, $targetNo];
+        }
+    }
+    if (!$changed) return 0;
+
+    // Use temporary values first so swapping/compacting never collides with
+    // an existing number if a deployment has a unique room-number index.
+    $temporary = $pdo->prepare("UPDATE students SET no = ? WHERE student_id = ?");
+    foreach ($changed as $index => [$student, $targetNo]) {
+        $temporary->execute(['900000000' . str_pad((string)$index, 4, '0', STR_PAD_LEFT), $student['student_id']]);
+    }
+
+    $update = $pdo->prepare("UPDATE students SET no = ? WHERE student_id = ?");
+    foreach ($changed as [$student, $targetNo]) {
+        $update->execute([$targetNo, $student['student_id']]);
+        $new = $student;
+        $new['no'] = $targetNo;
+        writeStudentRosterChange($pdo, $student['student_id'], 'renumber_after_deactivate', $student, $new, 'จัดเลขที่ใหม่หลังปิดใช้งานนักเรียนในห้องเดียวกัน', $adminName);
+    }
+    return count($changed);
 }
 
 function getRecentStudentRosterChanges($pdo) {
