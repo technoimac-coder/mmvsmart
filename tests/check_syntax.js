@@ -43,13 +43,14 @@ if (roster[1][1] !== '74001') throw new Error('SheetJS roster round-trip failed'
 
 [
   'getAdminStudentsByRoom',
+  'adminCompactStudentRoom',
   'adminUpdateStudentRecord',
   'adminSetStudentActive',
   'student_roster_changes'
 ].forEach(required => {
   if (!apiSource.includes(required)) throw new Error(`Missing roster API: ${required}`);
 });
-['rosterManageTable', 'loadManagedRoster', 'toggleManagedStudent'].forEach(required => {
+['rosterManageTable', 'loadManagedRoster', 'compactManagedRosterRoom', 'toggleManagedStudent'].forEach(required => {
   if (!html.includes(required)) throw new Error(`Missing roster UI: ${required}`);
 });
 ['adminUpdateTeacherAssignment', 'requireAdminSession()', 'advisory_room = ?, head_level = ?'].forEach(required => {

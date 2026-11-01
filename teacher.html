@@ -1642,7 +1642,7 @@
                   <label class="form-label small fw-bold">ค้นหาในห้อง</label>
                   <input id="rosterManageSearch" class="form-control" placeholder="ชื่อหรือรหัสนักเรียน" oninput="renderManagedRoster()">
                 </div>
-                <div class="col-12 col-md-3"><button class="btn btn-primary w-100 fw-bold" onclick="loadManagedRoster()"><i class="fas fa-search me-1"></i>โหลดรายชื่อ</button></div>
+                <div class="col-12 col-md-3 d-flex gap-2"><button class="btn btn-primary flex-fill fw-bold" onclick="loadManagedRoster()"><i class="fas fa-search me-1"></i>โหลดรายชื่อ</button><button class="btn btn-outline-warning" onclick="compactManagedRosterRoom()" title="จัดเรียงเลขที่ในห้องนี้"><i class="fas fa-sort-numeric-down"></i></button></div>
               </div>
               <div id="rosterManageSummary" class="alert alert-light border py-2 mb-2">เลือกชั้นและห้องเพื่อดูรายชื่อ</div>
               <div class="table-responsive" style="max-height:460px;">
@@ -4295,6 +4295,19 @@ function loadTeachersForClub() {
           tbody.innerHTML = `<tr><td colspan="7" class="text-center text-danger py-3">${academicEscape(err.message || 'โหลดรายชื่อไม่สำเร็จ')}</td></tr>`;
         })
         .getAdminStudentsByRoom(level, room, status);
+    }
+
+    function compactManagedRosterRoom() {
+      const level = document.getElementById('rosterManageLevel').value;
+      const room = document.getElementById('rosterManageRoom').value;
+      if (!level || !room) return Swal.fire('กรุณาเลือกห้อง', 'เลือกชั้นและห้องก่อนจัดเรียงเลขที่', 'warning');
+      Swal.fire({title:`จัดเรียงเลขที่ ${level}/${room}?`,text:'ระบบจะเรียงนักเรียนที่ยังใช้งานเป็น 1, 2, 3… และเก็บประวัติเดิมไว้',icon:'question',showCancelButton:true,confirmButtonText:'จัดเรียง',cancelButtonText:'ยกเลิก',confirmButtonColor:'#f59e0b'}).then(result => {
+        if (!result.isConfirmed) return;
+        Swal.fire({title:'กำลังจัดเรียง...',allowOutsideClick:false,didOpen:()=>Swal.showLoading()});
+        google.script.run.withSuccessHandler(res => { Swal.fire('สำเร็จ',res.message,'success'); loadManagedRoster(); })
+          .withFailureHandler(err => Swal.fire('จัดเรียงไม่สำเร็จ',err.message || 'เกิดข้อผิดพลาด','error'))
+          .adminCompactStudentRoom(level, room);
+      });
     }
 
     function renderManagedRoster() {

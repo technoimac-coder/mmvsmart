@@ -164,6 +164,9 @@ function routeAction($action, $args, $pdo) {
         case 'getAdminStudentsByRoom':
             return getAdminStudentsByRoom($args[0], $args[1], $args[2] ?? 'active', $pdo);
 
+        case 'adminCompactStudentRoom':
+            return adminCompactStudentRoom($args[0], $args[1], $pdo);
+
         case 'adminUpdateStudentRecord':
             return adminUpdateStudentRecord($args[0], $args[1], $pdo);
 
@@ -1828,6 +1831,27 @@ function compactActiveRoomNumbers($pdo, $level, $room, $adminName) {
         writeStudentRosterChange($pdo, $student['student_id'], 'renumber_after_deactivate', $student, $new, 'จัดเลขที่ใหม่หลังปิดใช้งานนักเรียนในห้องเดียวกัน', $adminName);
     }
     return count($changed);
+}
+
+function adminCompactStudentRoom($level, $room, $pdo) {
+    $adminName = requireAdminSession();
+    ensureAcademicYearSchema($pdo);
+    $level = trim((string)$level);
+    $room = trim((string)$room);
+    if (!preg_match('/^ม\.[1-6]$/u', $level) || !preg_match('/^[1-6]$/', $room)) {
+        throw new InvalidArgumentException('กรุณาเลือกชั้นและห้องให้ถูกต้อง');
+    }
+    try {
+        $pdo->beginTransaction();
+        $changed = compactActiveRoomNumbers($pdo, $level, $room, $adminName);
+        $pdo->commit();
+        return ['success' => true, 'changedCount' => $changed, 'message' => $changed > 0
+            ? 'จัดเลขที่ในห้อง ' . $level . '/' . $room . ' ใหม่เรียบร้อยแล้ว'
+            : 'เลขที่ในห้องนี้เรียงต่อกันอยู่แล้ว'];
+    } catch (Exception $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        throw $e;
+    }
 }
 
 function getRecentStudentRosterChanges($pdo) {
