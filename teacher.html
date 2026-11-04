@@ -2368,7 +2368,7 @@
           if (index >= 0) Object.assign(adminTeachersList[index], res.teacher);
           renderTeacherAvatarGrid(adminTeachersList);
           bootstrap.Modal.getInstance(document.getElementById('teacherAssignmentModal'))?.hide();
-          Swal.fire({title:'บันทึกสำเร็จ',text:res.message,icon:'success',confirmButtonText:'รับทราบ',allowOutsideClick:false,allowEscapeKey:false});
+          Swal.fire('สำเร็จ', res.message, 'success');
         })
         .withFailureHandler(err => {
           button.disabled = false;
@@ -2384,7 +2384,7 @@
         if (!result.isConfirmed) return;
         google.script.run.withSuccessHandler(res => {
           if (!res || !res.success) return Swal.fire('ดำเนินการไม่สำเร็จ', res?.message || 'เกิดข้อผิดพลาด', 'error');
-          Swal.fire({title:'บันทึกสำเร็จ',text:res.message,icon:'success',confirmButtonText:'รับทราบ',allowOutsideClick:false,allowEscapeKey:false});
+          Swal.fire('สำเร็จ', res.message, 'success');
           loadAdminTeacherAvatarsList();
         }).withFailureHandler(err => Swal.fire('ดำเนินการไม่สำเร็จ', err.message || 'เกิดข้อผิดพลาด', 'error')).removeTeacherAdminRole(teacherName, role);
       });
@@ -5264,7 +5264,7 @@ function loadTeachersForClub() {
         google.script.run.withSuccessHandler(res => {
           button.disabled = false;
           button.textContent = 'บันทึกการเช็คกิจกรรม';
-          Swal.fire('สำเร็จ', res.message, 'success');
+          Swal.fire({title:'บันทึกสำเร็จ',text:res.message,icon:'success',showConfirmButton:false,timer:5000,timerProgressBar:true,allowOutsideClick:true});
           loadActivityStudents();
         }).withFailureHandler(err => {
           button.disabled = false;
@@ -5290,7 +5290,7 @@ function loadTeachersForClub() {
       google.script.run.withSuccessHandler(res => {
         button.disabled = false;
         button.textContent = 'บันทึกการเช็คกิจกรรม';
-        Swal.fire({title:'บันทึกสำเร็จ',text:res.message,icon:'success',confirmButtonText:'รับทราบ',allowOutsideClick:false,allowEscapeKey:false});
+        Swal.fire({title:'บันทึกสำเร็จ',text:res.message,icon:'success',showConfirmButton:false,timer:5000,timerProgressBar:true,allowOutsideClick:true});
         loadActivityStudents();
       }).withFailureHandler(err => {
         button.disabled = false;
@@ -5461,7 +5461,7 @@ function loadTeachersForClub() {
             btn.disabled = false;
         })
         .withSuccessHandler(function(msg) { 
-            Swal.fire({title:'บันทึกสำเร็จ',text:msg,icon:'success',confirmButtonText:'รับทราบ',allowOutsideClick:false,allowEscapeKey:false}); 
+            Swal.fire({title:'บันทึกสำเร็จ',text:msg,icon:'success',showConfirmButton:false,timer:5000,timerProgressBar:true,allowOutsideClick:true}); 
             btn.innerText = "บันทึกข้อมูลการเช็คชื่อ"; 
             btn.disabled = false; 
             checkAndLoadAtt(); 
