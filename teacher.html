@@ -2368,7 +2368,7 @@
           if (index >= 0) Object.assign(adminTeachersList[index], res.teacher);
           renderTeacherAvatarGrid(adminTeachersList);
           bootstrap.Modal.getInstance(document.getElementById('teacherAssignmentModal'))?.hide();
-          Swal.fire('สำเร็จ', res.message, 'success');
+          Swal.fire({title:'บันทึกสำเร็จ',text:res.message,icon:'success',confirmButtonText:'รับทราบ',allowOutsideClick:false,allowEscapeKey:false});
         })
         .withFailureHandler(err => {
           button.disabled = false;
@@ -5290,7 +5290,7 @@ function loadTeachersForClub() {
       google.script.run.withSuccessHandler(res => {
         button.disabled = false;
         button.textContent = 'บันทึกการเช็คกิจกรรม';
-        Swal.fire('สำเร็จ', res.message, 'success');
+        Swal.fire({title:'บันทึกสำเร็จ',text:res.message,icon:'success',confirmButtonText:'รับทราบ',allowOutsideClick:false,allowEscapeKey:false});
         loadActivityStudents();
       }).withFailureHandler(err => {
         button.disabled = false;
@@ -5461,7 +5461,7 @@ function loadTeachersForClub() {
             btn.disabled = false;
         })
         .withSuccessHandler(function(msg) { 
-            Swal.fire('สำเร็จ', msg, 'success'); 
+            Swal.fire({title:'บันทึกสำเร็จ',text:msg,icon:'success',confirmButtonText:'รับทราบ',allowOutsideClick:false,allowEscapeKey:false}); 
             btn.innerText = "บันทึกข้อมูลการเช็คชื่อ"; 
             btn.disabled = false; 
             checkAndLoadAtt(); 
