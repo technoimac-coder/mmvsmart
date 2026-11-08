@@ -29,6 +29,8 @@
     .login-right { padding: 48px 40px; width: 55%; display: flex; flex-direction: column; justify-content: center; background: #ffffff; }
     .club-card { border-radius: 18px; transition: all 0.25s ease; border: 1px solid #e2e8f0; background: #ffffff; }
     .club-card:hover { transform: translateY(-4px); box-shadow: 0 14px 28px -4px rgba(30, 58, 138, 0.1); border-color: #93c5fd; }
+    .club-card h5, .club-card p { white-space: normal; overflow-wrap: anywhere; word-break: break-word; }
+    .club-card .club-target-badge { white-space: normal; overflow-wrap: anywhere; word-break: break-word; text-align: right; max-width: 68%; line-height: 1.25; }
     
     .btn { display: inline-block; font-weight: 600; line-height: 1.5; text-align: center; text-decoration: none; vertical-align: middle; cursor: pointer; user-select: none; border: 1px solid transparent; padding: 0.6rem 1.2rem; font-size: 1rem; border-radius: 0.6rem; transition: all 0.2s ease-in-out; font-family: inherit; }
     .btn-primary { color: #ffffff !important; background-color: #1e40af !important; border-color: #1e40af !important; }
@@ -269,7 +271,7 @@
               <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2.5 py-1.5 fw-bold">
                 <i class="fa-solid fa-users me-1"></i> ${c.current}/${c.max} คน
               </span>
-              <span class="badge bg-light text-muted border rounded-pill px-2 py-1 small">
+              <span class="badge bg-light text-muted border rounded-pill px-2 py-1 small club-target-badge">
                 ${c.target_levels || 'ทุกระดับชั้น'}
               </span>
             </div>
