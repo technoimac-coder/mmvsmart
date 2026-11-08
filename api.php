@@ -3196,7 +3196,7 @@ function studentSelectClub($stuId, $clubName, $pdo) {
         $pdo->beginTransaction();
         
         // Check student
-        $stmtS = $pdo->prepare("SELECT * FROM students WHERE is_active = 1 AND student_id = ?");
+        $stmtS = $pdo->prepare("SELECT * FROM students WHERE is_active = 1 AND student_id = ? FOR UPDATE");
         $stmtS->execute([trim($stuId)]);
         $student = $stmtS->fetch();
         if (!$student) {
@@ -3205,7 +3205,7 @@ function studentSelectClub($stuId, $clubName, $pdo) {
         }
         
         // Check if already selected
-        $stmtCheck = $pdo->prepare("SELECT club_name FROM club_members WHERE student_id = ?");
+        $stmtCheck = $pdo->prepare("SELECT club_name FROM club_members WHERE student_id = ? FOR UPDATE");
         $stmtCheck->execute([trim($stuId)]);
         $existingClub = $stmtCheck->fetchColumn();
         if ($existingClub) {
@@ -3281,7 +3281,7 @@ function submitClubApplication($stuId, $stuName, $level, $room, $clubName, $teac
         }
         
         // Check if student has club already
-        $stmtCheck = $pdo->prepare("SELECT club_name FROM club_members WHERE student_id = ?");
+        $stmtCheck = $pdo->prepare("SELECT club_name FROM club_members WHERE student_id = ? FOR UPDATE");
         $stmtCheck->execute([$stuId]);
         $hasClub = $stmtCheck->fetchColumn();
         if ($hasClub) {
@@ -3898,7 +3898,20 @@ function removeStudentFromClub($clubName, $stuId, $teacherName, $pdo) {
 function addMultipleStudentsToClub($clubName, $studentsArray, $pdo) {
     try {
         $pdo->beginTransaction();
-        
+        if (!is_array($studentsArray) || !$studentsArray) throw new InvalidArgumentException('ยังไม่มีรายชื่อนักเรียนสำหรับเพิ่ม');
+        $seen = [];
+        $stmtCheck = $pdo->prepare("SELECT club_name FROM club_members WHERE student_id = ? FOR UPDATE");
+        foreach ($studentsArray as $stu) {
+            $studentId = trim((string)($stu['id'] ?? ''));
+            if ($studentId === '') throw new InvalidArgumentException('พบรหัสนักเรียนไม่ถูกต้อง');
+            if (isset($seen[$studentId])) throw new InvalidArgumentException('มีรหัสนักเรียนซ้ำในรายการ: ' . $studentId);
+            $seen[$studentId] = true;
+            $stmtCheck->execute([$studentId]);
+            $existingClub = $stmtCheck->fetchColumn();
+            if ($existingClub && trim($existingClub) !== trim($clubName)) {
+                throw new RuntimeException('รหัสนักเรียน ' . $studentId . ' อยู่ในชุมนุม “' . $existingClub . '” แล้ว ไม่สามารถลงทะเบียนซ้ำได้');
+            }
+        }
         $stmtInsert = $pdo->prepare("INSERT INTO club_members (club_name, student_id, name, level, room) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE club_name = VALUES(club_name)");
         foreach ($studentsArray as $stu) {
             $stmtInsert->execute([

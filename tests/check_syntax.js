@@ -44,6 +44,7 @@ if (roster[1][1] !== '74001') throw new Error('SheetJS roster round-trip failed'
 [
   'getAdminStudentsByRoom',
   'adminCompactStudentRoom',
+  'อยู่ในชุมนุม',
   'adminUpdateStudentRecord',
   'adminSetStudentActive',
   'student_roster_changes'
