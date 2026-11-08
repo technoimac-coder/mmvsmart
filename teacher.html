@@ -6106,7 +6106,7 @@ function loadTeachersForClub() {
       btn.innerText = 'กำลังบันทึก...'; btn.disabled = true;
 
       google.script.run.withSuccessHandler(msg => {
-        Swal.fire('สำเร็จ', msg, 'success');
+        Swal.fire({title:'บันทึกเช็กชื่อสำเร็จ',text:msg,icon:'success',showConfirmButton:false,timer:5000,timerProgressBar:true,allowOutsideClick:true});
         btn.innerText = '💾 บันทึก/อัปเดต การเช็คชื่อ'; btn.disabled = false;
       }).saveClubAttendanceWithDate(clubName, date, records);
     }
