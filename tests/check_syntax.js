@@ -160,6 +160,12 @@ if (/id="rosterManageRoom"[\s\S]*?<\/select>/.exec(html)?.[0].includes('value="7
 ['getLocalDateValue', 'refreshDateAfterMidnight', 'setInterval(refreshDateAfterMidnight, 60000)'].forEach(required => {
   if (!html.includes(required)) throw new Error(`Missing automatic date rollover support: ${required}`);
 });
+if (!apiSource.includes("session.gc_maxlifetime") || !apiSource.includes("'lifetime' => 28800")) {
+  throw new Error('Server session lifetime must cover a school day');
+}
+if (!fs.readFileSync(path.join(root, 'google-mock.js'), 'utf8').includes('เซสชันหมดอายุ')) {
+  throw new Error('Client must handle expired server sessions');
+}
 ['ensureDateInSelectedAcademicPeriod', 'return currentAcademicPeriod($pdo)', 'กิจกรรมนี้ไม่ได้อยู่ในภาคเรียนที่เลือก'].forEach(required => {
   if (!apiSource.includes(required)) throw new Error(`Missing selected-term API enforcement: ${required}`);
 });

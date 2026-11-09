@@ -96,6 +96,16 @@ function callServer(action, args, successCallback, failureCallback) {
       Swal.close();
     }
     if (data && data.success === false && data.message) {
+      if (/เซสชัน(?:ผู้ดูแลระบบ)?หมดอายุ|กรุณาเข้าสู่ระบบใหม่/.test(String(data.message))) {
+        localStorage.removeItem('makudmuang_session');
+        const mainApp = document.getElementById('mainApp');
+        const loginPage = document.getElementById('loginPage');
+        if (mainApp && loginPage) {
+          mainApp.style.display = 'none';
+          loginPage.style.display = 'flex';
+        }
+        if (window.Swal) Swal.fire('เซสชันหมดอายุ', 'กรุณาเข้าสู่ระบบใหม่อีกครั้ง', 'warning');
+      }
       if (failureCallback) {
         failureCallback(new Error(data.message));
       } else if (successCallback) {

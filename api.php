@@ -10,7 +10,12 @@ header('Access-Control-Allow-Methods: POST, GET, OPTIONS');
 // Use a server-side session for privileged administration actions.  The
 // existing UI session in localStorage is only a convenience and is never
 // trusted by the academic-year endpoints below.
+// Keep a teacher's working session through a normal school day while still
+// requiring a fresh login on the next day (or after explicit logout).
+ini_set('session.gc_maxlifetime', '28800');
+ini_set('session.cookie_lifetime', '28800');
 session_set_cookie_params([
+    'lifetime' => 28800,
     'httponly' => true,
     'secure' => (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off'),
     'samesite' => 'Strict',
