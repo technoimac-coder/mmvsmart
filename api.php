@@ -32,6 +32,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 require_once __DIR__ . '/config.php';
 
+// Restore a long-lived login when the hosting provider removes PHP session
+// files earlier than the configured lifetime.
+ensureRememberLoginSchema($pdo);
+restoreRememberLogin($pdo);
+
 // Read JSON input body
 $inputRaw = file_get_contents('php://input');
 $body = json_decode($inputRaw, true) ?: [];
@@ -465,6 +470,8 @@ function processLogin($user, $pass, $pdo) {
     $_SESSION['username'] = trim($username);
     $_SESSION['teacher_name'] = trim($foundUser['name']);
     $_SESSION['is_admin'] = $isAdmin;
+
+    issueRememberLogin($username, $pdo);
     
     ensureActivityAdminSchema($pdo);
 
@@ -764,13 +771,63 @@ function adminAddStudent($no, $id, $name, $level, $room, $pdo) {
 }
 
 function logoutSession() {
+    // Revoke the persistent token as well as the PHP session.
+    if (!empty($_SESSION['username'])) {
+        global $pdo;
+        $pdo->prepare('DELETE FROM teacher_login_tokens WHERE username = ?')->execute([$_SESSION['username']]);
+    }
     $_SESSION = [];
     if (ini_get('session.use_cookies')) {
         $params = session_get_cookie_params();
         setcookie(session_name(), '', time() - 42000, $params['path'], $params['domain'] ?? '', $params['secure'], $params['httponly']);
     }
     session_destroy();
+    if (!empty($_COOKIE['mmv_remember'])) {
+        setcookie('mmv_remember', '', time() - 42000, '/', '', !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off', true);
+    }
     return ['success' => true];
+}
+
+function ensureRememberLoginSchema($pdo) {
+    $pdo->exec("CREATE TABLE IF NOT EXISTS teacher_login_tokens (
+        id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+        username VARCHAR(100) NOT NULL,
+        token_hash CHAR(64) NOT NULL UNIQUE,
+        expires_at DATETIME NOT NULL,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_teacher_login_tokens_username (username),
+        INDEX idx_teacher_login_tokens_expires (expires_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+}
+
+function issueRememberLogin($username, $pdo) {
+    $raw = bin2hex(random_bytes(32));
+    $hash = hash('sha256', $raw);
+    $expires = date('Y-m-d H:i:s', time() + 2592000);
+    $pdo->prepare('DELETE FROM teacher_login_tokens WHERE username = ? OR expires_at < NOW()')->execute([$username]);
+    $pdo->prepare('INSERT INTO teacher_login_tokens (username, token_hash, expires_at) VALUES (?, ?, ?)')->execute([$username, $hash, $expires]);
+    setcookie('mmv_remember', $raw, [
+        'expires' => time() + 2592000, 'path' => '/', 'secure' => (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off'),
+        'httponly' => true, 'samesite' => 'Lax'
+    ]);
+}
+
+function restoreRememberLogin($pdo) {
+    if (!empty($_SESSION['username']) || empty($_COOKIE['mmv_remember'])) return;
+    $hash = hash('sha256', (string)$_COOKIE['mmv_remember']);
+    $stmt = $pdo->prepare('SELECT u.* FROM teacher_login_tokens t JOIN users u ON u.username = t.username WHERE t.token_hash = ? AND t.expires_at > NOW() LIMIT 1');
+    $stmt->execute([$hash]);
+    $user = $stmt->fetch();
+    if (!$user || (($user['teacher_status'] ?? 'active') !== 'active' && !in_array(trim($user['username']), ['1240800191192', '1229900316190'], true))) return;
+    $username = trim($user['username']);
+    $_SESSION['username'] = $username;
+    $_SESSION['teacher_name'] = trim($user['name']);
+    $_SESSION['is_admin'] = in_array($username, ['1240800191192', '1229900316190'], true);
+    $_SESSION['is_activity_admin'] = false;
+    try {
+        $a = $pdo->prepare('SELECT COUNT(*) FROM activity_admins WHERE username = ?'); $a->execute([$username]);
+        $_SESSION['is_activity_admin'] = ((int)$a->fetchColumn() > 0);
+    } catch (Throwable $e) { /* schema is created lazily */ }
 }
 
 /**
