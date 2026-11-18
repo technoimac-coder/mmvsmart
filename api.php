@@ -118,7 +118,7 @@ function routeAction($action, $args, $pdo) {
             return getAdminTeacherListWithAvatars($pdo);
 
         case 'adminUpdateTeacherAssignment':
-            return adminUpdateTeacherAssignment($args[0], $args[1] ?? '', $args[2] ?? '', $pdo, $args[3] ?? 'active');
+            return adminUpdateTeacherAssignment($args[0], $args[1] ?? '', $args[2] ?? '', $pdo, $args[3] ?? 'active', $args[4] ?? null);
 
         case 'adminUpdateTeacherStatus':
             return adminUpdateTeacherStatus($args[0], $args[1] ?? 'active', $pdo);
@@ -1553,7 +1553,7 @@ function saveActivityMatrix($level, $room, $rows, $teacherName, $pdo) {
     }
 }
 
-function adminUpdateTeacherAssignment($userId, $advisoryRoom, $headLevel, $pdo, $teacherStatus = 'active') {
+function adminUpdateTeacherAssignment($userId, $advisoryRoom, $headLevel, $pdo, $teacherStatus = 'active', $teacherName = null) {
     requireAdminSession();
     $userId = filter_var($userId, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
     if ($userId === false) throw new InvalidArgumentException('รหัสบัญชีครูไม่ถูกต้อง');
@@ -1561,6 +1561,10 @@ function adminUpdateTeacherAssignment($userId, $advisoryRoom, $headLevel, $pdo, 
     $advisoryRoom = trim((string)$advisoryRoom);
     $headLevel = trim((string)$headLevel);
     $teacherStatus = trim((string)$teacherStatus);
+    $teacherName = $teacherName === null ? null : trim((string)$teacherName);
+    if ($teacherName !== null && ($teacherName === '' || mb_strlen($teacherName) > 150)) {
+        throw new InvalidArgumentException('กรุณาระบุชื่อ–นามสกุลครูไม่เกิน 150 ตัวอักษร');
+    }
     if (!in_array($teacherStatus, ['active', 'inactive'], true)) throw new InvalidArgumentException('สถานะครูไม่ถูกต้อง');
     if ($advisoryRoom !== '' && !preg_match('/^ม\.[1-6]\/[1-6]$/u', $advisoryRoom)) {
         throw new InvalidArgumentException('ห้องที่ปรึกษาต้องเป็น ม.1/1 ถึง ม.6/6');
@@ -1581,15 +1585,15 @@ function adminUpdateTeacherAssignment($userId, $advisoryRoom, $headLevel, $pdo, 
         }
     }
 
-    $update = $pdo->prepare("UPDATE users SET advisory_room = ?, head_level = ?, teacher_status = ?, teacher_status_updated_at = NOW() WHERE id = ?");
-    $update->execute([$advisoryRoom !== '' ? $advisoryRoom : null, $headLevel !== '' ? $headLevel : null, $teacherStatus, $userId]);
+    $update = $pdo->prepare("UPDATE users SET name = COALESCE(?, name), advisory_room = ?, head_level = ?, teacher_status = ?, teacher_status_updated_at = NOW() WHERE id = ?");
+    $update->execute([$teacherName, $advisoryRoom !== '' ? $advisoryRoom : null, $headLevel !== '' ? $headLevel : null, $teacherStatus, $userId]);
 
     return [
         'success' => true,
         'message' => 'ปรับสิทธิ์ครูที่ปรึกษาเรียบร้อยแล้ว กรุณาให้ครูออกจากระบบและเข้าสู่ระบบใหม่',
         'teacher' => [
             'id' => (int)$userId,
-            'name' => $teacher['name'],
+            'name' => $teacherName !== null ? $teacherName : $teacher['name'],
             'advisory_room' => $advisoryRoom,
             'head_level' => $headLevel,
             'teacher_status' => $teacherStatus

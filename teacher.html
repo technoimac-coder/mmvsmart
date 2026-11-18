@@ -1953,7 +1953,7 @@
           <input type="hidden" id="teacherAssignmentId">
           <div class="alert alert-light border mb-3">
             <div class="small text-muted">กำลังแก้ไขบัญชี</div>
-            <div class="fw-bold" id="teacherAssignmentName">-</div>
+            <input type="text" id="teacherAssignmentFullName" class="form-control form-control-sm mt-1" placeholder="ชื่อ–นามสกุลครู">
           </div>
           <label class="small text-muted fw-bold">ครูที่ปรึกษาประจำชั้น</label>
           <div class="row g-2 mb-3">
@@ -1984,7 +1984,7 @@
             <option value="inactive">พ้นสภาพ / ไม่ใช้งาน</option>
           </select>
           <div class="alert alert-warning small mb-3"><i class="fas fa-info-circle me-1"></i>การปิดบัญชีจะไม่ลบประวัติการเช็กชื่อ รายงาน หรือข้อมูลเดิม</div>
-          <div class="alert alert-info small mb-0"><i class="fas fa-shield-alt me-1"></i> การแก้ไขนี้ไม่เปลี่ยนชื่อผู้ใช้ รหัสผ่าน รูปภาพ หรือประวัติเดิม</div>
+          <div class="alert alert-info small mb-0"><i class="fas fa-shield-alt me-1"></i> การแก้ไขชื่อจะไม่เปลี่ยนชื่อผู้ใช้ รหัสผ่าน รูปภาพ หรือประวัติเดิม</div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-light" data-bs-dismiss="modal">ยกเลิก</button>
@@ -2313,6 +2313,9 @@
                 <button class="btn btn-sm btn-outline-success py-1 px-2 fw-bold" style="font-size:0.8rem;" onclick="openTeacherAssignmentEditor(${t.id})" title="แก้ไขห้องที่ปรึกษาโดยไม่เปลี่ยนรหัสผ่าน">
                   <i class="fas fa-school"></i>
                 </button>
+                <button class="btn btn-sm btn-outline-warning py-1 px-2 fw-bold" style="font-size:0.8rem;" onclick="openTeacherAssignmentEditor(${t.id})" title="แก้ไขชื่อ–นามสกุลครู">
+                  <i class="fas fa-pen"></i>
+                </button>
                 <button class="btn btn-sm btn-outline-primary py-1 px-2 fw-bold" style="font-size:0.8rem;" onclick="triggerUploadSingleTeacherAvatar(${t.id}, '${safeName}')" title="อัปโหลด/เปลี่ยนรูปครูท่านนี้">
                   <i class="fas fa-camera me-1"></i>${hasAvatar ? 'เปลี่ยน' : 'เพิ่มรูป'}
                 </button>
@@ -2333,7 +2336,7 @@
       }
       const advisoryParts = String(selected.advisory_room || '').split('/');
       document.getElementById('teacherAssignmentId').value = selected.id;
-      document.getElementById('teacherAssignmentName').textContent = `ครู${selected.name}`;
+      document.getElementById('teacherAssignmentFullName').value = selected.name || '';
       document.getElementById('teacherAssignmentLevel').value = advisoryParts[0] || '';
       document.getElementById('teacherAssignmentRoom').value = advisoryParts[1] || '';
       document.getElementById('teacherAssignmentHeadLevel').value = selected.head_level || '';
@@ -2347,6 +2350,11 @@
       const room = document.getElementById('teacherAssignmentRoom').value;
       const headLevelValue = document.getElementById('teacherAssignmentHeadLevel').value;
       const statusValue = document.getElementById('teacherAssignmentStatus').value;
+      const teacherNameValue = document.getElementById('teacherAssignmentFullName').value.trim();
+      if (!teacherNameValue) {
+        Swal.fire('ข้อมูลไม่ครบ', 'กรุณาระบุชื่อ–นามสกุลครู', 'warning');
+        return;
+      }
       if ((level && !room) || (!level && room)) {
         Swal.fire('ข้อมูลไม่ครบ', 'กรุณาเลือกทั้งชั้นและห้อง หรือไม่ระบุทั้งสองช่อง', 'warning');
         return;
@@ -2375,7 +2383,7 @@
           button.innerHTML = '<i class="fas fa-save me-1"></i>บันทึกสิทธิ์';
           Swal.fire('บันทึกไม่สำเร็จ', err.message || 'เกิดข้อผิดพลาด', 'error');
         })
-        .adminUpdateTeacherAssignment(id, advisoryValue, headLevelValue, statusValue);
+        .adminUpdateTeacherAssignment(id, advisoryValue, headLevelValue, statusValue, teacherNameValue);
     }
 
     function removeTeacherAdminRole(teacherName, role) {
