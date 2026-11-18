@@ -2404,11 +2404,20 @@ function saveAttendance($records, $level, $room, $date, $teacherName, $pdo) {
     
     $unselected = [];
     $validStatus = ["มาเรียน", "ลากิจ", "ลาป่วย", "มาสาย", "ขาดเรียน"];
+    $isAdmin = !empty($_SESSION['is_admin']);
+    $existingStatuses = [];
+    if (!$isAdmin) {
+        $existingStmt = $pdo->prepare('SELECT student_id, status FROM attendance WHERE date = ? AND level = ? AND room = ?');
+        $existingStmt->execute([$date, trim($level), trim($room)]);
+        foreach ($existingStmt->fetchAll(PDO::FETCH_ASSOC) as $existing) $existingStatuses[trim($existing['student_id'])] = $existing['status'];
+    }
     
     foreach ($records as $r) {
         $status = trim($r['status'] ?? '');
         if ($status === "" || !in_array($status, $validStatus)) {
             $unselected[] = "เลขที่ " . $r['no'];
+        } elseif ($status === 'มาสาย' && !$isAdmin && (($existingStatuses[trim($r['id'])] ?? '') !== 'มาสาย')) {
+            throw new Exception('เฉพาะผู้ดูแลระบบเท่านั้นที่สามารถบันทึกสถานะมาสายได้');
         }
     }
     

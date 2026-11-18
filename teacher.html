@@ -5367,10 +5367,13 @@ function loadTeachersForClub() {
       }
       
       let html = students.map((s) => { 
-        const statuses = ['มาเรียน', 'ลากิจ', 'ลาป่วย', 'มาสาย', 'ขาดเรียน']; 
+        const statuses = ['มาเรียน', 'ลากิจ', 'ลาป่วย', 'มาสาย', 'ขาดเรียน'];
         let buttons = statuses.map(st => { 
           let activeClass = (s.savedStatus === st) ? 'active btn-'+st : ''; 
-          return `<button class="btn btn-status flex-fill ${activeClass}" onclick="selectStatus(this, '${st}')">${st}</button>`; 
+          const lateLocked = st === 'มาสาย' && !isAdminUser;
+          const disabled = lateLocked ? 'disabled' : '';
+          const title = lateLocked ? 'เฉพาะผู้ดูแลระบบเท่านั้น' : '';
+          return `<button class="btn btn-status flex-fill ${activeClass}" ${disabled} title="${title}" onclick="selectStatus(this, '${st}')">${st}${lateLocked ? ' 🔒' : ''}</button>`; 
         }).join(''); 
         
         const avatarHtml = s.avatar ? 
