@@ -1588,15 +1588,29 @@ function adminUpdateTeacherAssignment($userId, $advisoryRoom, $headLevel, $pdo, 
         }
     }
 
-    $update = $pdo->prepare("UPDATE users SET name = COALESCE(?, name), advisory_room = ?, head_level = ?, teacher_status = ?, teacher_status_updated_at = NOW() WHERE id = ?");
-    $update->execute([$teacherName, $advisoryRoom !== '' ? $advisoryRoom : null, $headLevel !== '' ? $headLevel : null, $teacherStatus, $userId]);
+    $newName = $teacherName !== null ? $teacherName : $teacher['name'];
+    try {
+        $pdo->beginTransaction();
+        $update = $pdo->prepare("UPDATE users SET name = COALESCE(?, name), advisory_room = ?, head_level = ?, teacher_status = ?, teacher_status_updated_at = NOW() WHERE id = ?");
+        $update->execute([$teacherName, $advisoryRoom !== '' ? $advisoryRoom : null, $headLevel !== '' ? $headLevel : null, $teacherStatus, $userId]);
+        if ($teacherName !== null && $teacherName !== $teacher['name']) {
+            // Club records store the display name, so keep them synchronized
+            // when an administrator changes a teacher's name.
+            $clubUpdate = $pdo->prepare('UPDATE clubs SET teacher = REPLACE(teacher, ?, ?) WHERE teacher LIKE ?');
+            $clubUpdate->execute([$teacher['name'], $teacherName, '%' . $teacher['name'] . '%']);
+        }
+        $pdo->commit();
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        throw $e;
+    }
 
     return [
         'success' => true,
         'message' => 'ปรับสิทธิ์ครูที่ปรึกษาเรียบร้อยแล้ว กรุณาให้ครูออกจากระบบและเข้าสู่ระบบใหม่',
         'teacher' => [
             'id' => (int)$userId,
-            'name' => $teacherName !== null ? $teacherName : $teacher['name'],
+            'name' => $newName,
             'advisory_room' => $advisoryRoom,
             'head_level' => $headLevel,
             'teacher_status' => $teacherStatus
