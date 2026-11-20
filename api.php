@@ -34,13 +34,10 @@ require_once __DIR__ . '/config.php';
 
 // Restore a long-lived login when the hosting provider removes PHP session
 // files earlier than the configured lifetime.
-try {
-    ensureRememberLoginSchema($pdo);
-    restoreRememberLogin($pdo);
-} catch (Throwable $e) {
-    // Some shared-hosting database users cannot CREATE TABLE. Keep the
-    // normal PHP session path working in that case.
-}
+// Persistent-login schema is intentionally not initialized during every API
+// request; some shared hosts block CREATE TABLE and can stall the API.
+// The normal PHP session remains the safe fallback until the table is created
+// by an administrator.
 
 // Read JSON input body
 $inputRaw = file_get_contents('php://input');
