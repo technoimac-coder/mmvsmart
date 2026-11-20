@@ -34,8 +34,13 @@ require_once __DIR__ . '/config.php';
 
 // Restore a long-lived login when the hosting provider removes PHP session
 // files earlier than the configured lifetime.
-ensureRememberLoginSchema($pdo);
-restoreRememberLogin($pdo);
+try {
+    ensureRememberLoginSchema($pdo);
+    restoreRememberLogin($pdo);
+} catch (Throwable $e) {
+    // Some shared-hosting database users cannot CREATE TABLE. Keep the
+    // normal PHP session path working in that case.
+}
 
 // Read JSON input body
 $inputRaw = file_get_contents('php://input');
@@ -471,7 +476,7 @@ function processLogin($user, $pass, $pdo) {
     $_SESSION['teacher_name'] = trim($foundUser['name']);
     $_SESSION['is_admin'] = $isAdmin;
 
-    issueRememberLogin($username, $pdo);
+    try { issueRememberLogin($username, $pdo); } catch (Throwable $e) { /* optional fallback */ }
     
     ensureActivityAdminSchema($pdo);
 
@@ -789,7 +794,7 @@ function logoutSession() {
 }
 
 function ensureRememberLoginSchema($pdo) {
-    $pdo->exec("CREATE TABLE IF NOT EXISTS teacher_login_tokens (
+    try { $pdo->exec("CREATE TABLE IF NOT EXISTS teacher_login_tokens (
         id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
         username VARCHAR(100) NOT NULL,
         token_hash CHAR(64) NOT NULL UNIQUE,
@@ -797,7 +802,8 @@ function ensureRememberLoginSchema($pdo) {
         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         INDEX idx_teacher_login_tokens_username (username),
         INDEX idx_teacher_login_tokens_expires (expires_at)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"); } catch (Throwable $e) { return false; }
+    return true;
 }
 
 function issueRememberLogin($username, $pdo) {
@@ -815,9 +821,9 @@ function issueRememberLogin($username, $pdo) {
 function restoreRememberLogin($pdo) {
     if (!empty($_SESSION['username']) || empty($_COOKIE['mmv_remember'])) return;
     $hash = hash('sha256', (string)$_COOKIE['mmv_remember']);
-    $stmt = $pdo->prepare('SELECT u.* FROM teacher_login_tokens t JOIN users u ON u.username = t.username WHERE t.token_hash = ? AND t.expires_at > NOW() LIMIT 1');
+    try { $stmt = $pdo->prepare('SELECT u.* FROM teacher_login_tokens t JOIN users u ON u.username = t.username WHERE t.token_hash = ? AND t.expires_at > NOW() LIMIT 1');
     $stmt->execute([$hash]);
-    $user = $stmt->fetch();
+    $user = $stmt->fetch(); } catch (Throwable $e) { return; }
     if (!$user || (($user['teacher_status'] ?? 'active') !== 'active' && !in_array(trim($user['username']), ['1240800191192', '1229900316190'], true))) return;
     $username = trim($user['username']);
     $_SESSION['username'] = $username;
