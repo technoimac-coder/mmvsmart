@@ -818,7 +818,7 @@ function issueRememberLogin($username, $pdo) {
 function restoreRememberLogin($pdo) {
     if (!empty($_SESSION['username']) || empty($_COOKIE['mmv_remember'])) return;
     $hash = hash('sha256', (string)$_COOKIE['mmv_remember']);
-    try { $stmt = $pdo->prepare('SELECT u.* FROM teacher_login_tokens t JOIN users u ON u.username = t.username WHERE t.token_hash = ? AND t.expires_at > NOW() LIMIT 1');
+    try { $stmt = $pdo->prepare("SELECT u.* FROM teacher_login_tokens t JOIN users u ON CONVERT(u.username USING utf8mb4) COLLATE utf8mb4_unicode_ci = CONVERT(t.username USING utf8mb4) COLLATE utf8mb4_unicode_ci WHERE t.token_hash = ? AND t.expires_at > NOW() LIMIT 1");
     $stmt->execute([$hash]);
     $user = $stmt->fetch(); } catch (Throwable $e) { return; }
     if (!$user || (($user['teacher_status'] ?? 'active') !== 'active' && !in_array(trim($user['username']), ['1240800191192', '1229900316190'], true))) return;
