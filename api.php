@@ -12,10 +12,10 @@ header('Access-Control-Allow-Methods: POST, GET, OPTIONS');
 // trusted by the academic-year endpoints below.
 // Keep a teacher's working session for 30 days and refresh it while used.
 // Explicit logout still clears the cookie immediately.
-ini_set('session.gc_maxlifetime', '2592000');
-ini_set('session.cookie_lifetime', '2592000');
+ini_set('session.gc_maxlifetime', '604800');
+ini_set('session.cookie_lifetime', '604800');
 session_set_cookie_params([
-    'lifetime' => 2592000,
+    'lifetime' => 604800,
     'httponly' => true,
     'secure' => (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off'),
     'samesite' => 'Strict',
@@ -34,10 +34,12 @@ require_once __DIR__ . '/config.php';
 
 // Restore a long-lived login when the hosting provider removes PHP session
 // files earlier than the configured lifetime.
-// Persistent-login schema is intentionally not initialized during every API
-// request; some shared hosts block CREATE TABLE and can stall the API.
-// The normal PHP session remains the safe fallback until the table is created
-// by an administrator.
+// Restore the optional 7-day login token. All failures are caught so a
+// hosting/database issue never blocks the normal PHP session path.
+try {
+    ensureRememberLoginSchema($pdo);
+    restoreRememberLogin($pdo);
+} catch (Throwable $e) { }
 
 // Read JSON input body
 $inputRaw = file_get_contents('php://input');
@@ -806,11 +808,11 @@ function ensureRememberLoginSchema($pdo) {
 function issueRememberLogin($username, $pdo) {
     $raw = bin2hex(random_bytes(32));
     $hash = hash('sha256', $raw);
-    $expires = date('Y-m-d H:i:s', time() + 2592000);
+    $expires = date('Y-m-d H:i:s', time() + 604800);
     $pdo->prepare('DELETE FROM teacher_login_tokens WHERE username = ? OR expires_at < NOW()')->execute([$username]);
     $pdo->prepare('INSERT INTO teacher_login_tokens (username, token_hash, expires_at) VALUES (?, ?, ?)')->execute([$username, $hash, $expires]);
     setcookie('mmv_remember', $raw, [
-        'expires' => time() + 2592000, 'path' => '/', 'secure' => (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off'),
+        'expires' => time() + 604800, 'path' => '/', 'secure' => (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off'),
         'httponly' => true, 'samesite' => 'Lax'
     ]);
 }
