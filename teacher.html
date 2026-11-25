@@ -573,6 +573,11 @@
     #adminActivityTable { min-width: 760px; }
     #adminActivityTable th:last-child, #adminActivityTable td:last-child { min-width: 190px; white-space: nowrap; }
     #adminActivityTable td:last-child .btn { white-space: nowrap; display: inline-flex; width: auto; }
+    .activity-matrix-wrap { overflow-x: auto !important; }
+    .activity-matrix { table-layout: auto !important; width: max-content !important; min-width: 980px; }
+    .activity-matrix th, .activity-matrix td { white-space: normal; min-width: 72px; word-break: normal; overflow-wrap: break-word; }
+    .activity-matrix th:nth-child(3), .activity-matrix td:nth-child(3) { min-width: 180px; }
+    .activity-matrix .activity-matrix-head { min-width: 150px; max-width: 190px; line-height: 1.25; }
     
     /* Clean Solid Soft Thematic Table Headers (No Gradients) */
     #dashDeductTable thead th, #tableAdminDeductLog thead th { 
@@ -640,6 +645,10 @@
       #adminActivityTable th, #adminActivityTable td { white-space: normal !important; }
       #adminActivityTable th:last-child, #adminActivityTable td:last-child { white-space: nowrap !important; min-width: 190px !important; }
       .admin-activity-table-wrap { overflow-x: auto !important; }
+      .activity-matrix-wrap { overflow-x: auto !important; }
+      .activity-matrix { table-layout: auto !important; width: max-content !important; min-width: 980px !important; }
+      .activity-matrix th, .activity-matrix td { white-space: normal !important; word-break: normal !important; overflow-wrap: break-word !important; }
+      .activity-matrix .activity-matrix-head { min-width: 150px !important; max-width: 190px !important; }
     }
     
     .table-title { 
