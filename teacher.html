@@ -557,6 +557,16 @@
     .table tbody tr:hover {
       background-color: #f8fafc;
     }
+
+    /* Club overview: preserve readable column widths at every viewport size. */
+    #tableClubsList { table-layout: auto !important; min-width: 900px; }
+    #tableClubsList th, #tableClubsList td { white-space: normal; vertical-align: middle; }
+    #tableClubsList th:nth-child(1), #tableClubsList td:nth-child(1) { min-width: 170px; }
+    #tableClubsList th:nth-child(2), #tableClubsList td:nth-child(2) { min-width: 170px; }
+    #tableClubsList th:nth-child(3), #tableClubsList td:nth-child(3) { min-width: 280px; }
+    #tableClubsList th:nth-child(4), #tableClubsList td:nth-child(4) { min-width: 110px; }
+    #tableClubsList th:nth-child(5), #tableClubsList td:nth-child(5) { min-width: 110px; }
+    #tableClubsList th:last-child, #tableClubsList td:last-child { min-width: 170px; white-space: nowrap; }
     
     /* Clean Solid Soft Thematic Table Headers (No Gradients) */
     #dashDeductTable thead th, #tableAdminDeductLog thead th { 
