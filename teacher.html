@@ -567,6 +567,9 @@
     #tableClubsList th:nth-child(4), #tableClubsList td:nth-child(4) { min-width: 110px; }
     #tableClubsList th:nth-child(5), #tableClubsList td:nth-child(5) { min-width: 110px; }
     #tableClubsList th:last-child, #tableClubsList td:last-child { min-width: 170px; white-space: nowrap; }
+    #tableClubAttendance { min-width: 620px; }
+    #tableClubAttendance th:last-child, #tableClubAttendance td:last-child { min-width: 150px; }
+    #tableClubAttendance .club-status-btn { min-width: 58px; white-space: nowrap; flex: 0 0 58px !important; }
     
     /* Clean Solid Soft Thematic Table Headers (No Gradients) */
     #dashDeductTable thead th, #tableAdminDeductLog thead th { 
@@ -623,6 +626,9 @@
       #tableClubsList th:nth-child(3), #tableClubsList td:nth-child(3) { min-width: 220px !important; }
       #tableClubsList th:last-child, #tableClubsList td:last-child { min-width: 150px !important; white-space: nowrap !important; }
       #tableClubsList td:last-child .btn { white-space: nowrap !important; display: inline-flex; width: auto !important; }
+      .club-attendance-table-container { overflow-x: auto !important; }
+      #tableClubAttendance { table-layout: auto !important; width: 620px !important; }
+      #tableClubAttendance .club-status-btn { min-width: 64px !important; flex-basis: 64px !important; white-space: nowrap !important; }
     }
     
     .table-title { 
@@ -1294,7 +1300,7 @@
                 </div>
               </div>
 
-              <div class="table-container">
+              <div class="table-container club-attendance-table-container">
                 <table class="table table-bordered table-sm bg-white" id="tableClubAttendance">
                   <thead class="table-primary">
                     <tr>
