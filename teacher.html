@@ -543,6 +543,17 @@
       border-bottom: 1px solid #f1f5f9;
       color: #334155;
     }
+
+    /* Keep long Thai names, room lists and descriptions inside the viewport. */
+    .table th, .table td, .card, .alert, .table-title, .form-label,
+    .nav-item, .btn, .badge {
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+    .table td.text-start, .table th.text-start,
+    .table td:nth-child(2), .table th:nth-child(2) {
+      white-space: normal;
+    }
     .table tbody tr:hover {
       background-color: #f8fafc;
     }
@@ -572,6 +583,28 @@
       background-color: #f3e8ff !important; 
       color: #6b21a8 !important; 
       border-bottom: 2px solid #d8b4fe;
+    }
+
+    @media (max-width: 1100px) {
+      .main-content { min-width: 0 !important; width: 100% !important; }
+      .container-fluid, .section-content { min-width: 0 !important; max-width: 100% !important; }
+      .table-container, .table-responsive { max-width: 100%; }
+      .table th, .table td { white-space: normal; overflow-wrap: anywhere; word-break: break-word; }
+      .table th { position: sticky; top: 0; }
+      .table { table-layout: fixed; width: 100% !important; }
+      .table th, .table td { min-width: 0 !important; }
+    }
+
+    @media (max-width: 768px) {
+      .topbar { min-height: 58px; }
+      #pageTitle { white-space: normal !important; overflow: visible !important; text-overflow: clip !important; line-height: 1.25; }
+      .table-container, .table-responsive { overflow-x: hidden !important; }
+      .table { font-size: 0.78rem !important; table-layout: fixed; }
+      .table th, .table td { padding: 7px 5px !important; line-height: 1.35; white-space: normal !important; overflow-wrap: anywhere; word-break: break-word; }
+      .table th { font-size: 0.76rem !important; }
+      .table-title, h1, h2, h3, h4, h5, h6 { overflow-wrap: anywhere; word-break: break-word; }
+      .card .row, .card .d-flex { min-width: 0; }
+      .btn, .form-control, .form-select { max-width: 100%; white-space: normal; }
     }
     
     .table-title { 
