@@ -4940,7 +4940,12 @@ function loadTeachersForClub() {
         rows.push([student.no, student.id, student.name, student.room || report.room, ...statuses, Number(student.joined || 0), Number(student.leave || 0), Number(student.absent || 0), Number(student.unchecked || 0), Number(student.percent || 0) / 100, student.passed ? 'ผ่าน' : 'ไม่ผ่าน']);
       });
       const ws = XLSX.utils.aoa_to_sheet(rows);
-      ws['!cols'] = [{wch:8},{wch:16},{wch:30},{wch:8},{wch:10},{wch:8},{wch:12},{wch:12},{wch:10},{wch:12}];
+      // Give each activity column enough room for its name and date.
+      ws['!cols'] = [
+        {wch:8}, {wch:16}, {wch:30}, {wch:8},
+        ...(report.activities || []).map(() => ({wch:28})),
+        {wch:10}, {wch:8}, {wch:12}, {wch:12}, {wch:10}, {wch:12}
+      ];
       const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'รายงานกิจกรรม');
       const safeLevel = String(report.level || '').replace(/[^ก-๙A-Za-z0-9.]/g, '');
       XLSX.writeFile(wb, `รายงานกิจกรรม_${safeLevel}_${report.room === 'all' ? 'ทุกห้อง' : report.room}_ปี${report.academicYear}_เทอม${report.semester}.xlsx`);
