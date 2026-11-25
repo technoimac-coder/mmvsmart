@@ -1288,7 +1288,7 @@ function buildActivityReport($level, $room, $academicYear, $semester, $pdo) {
     $students = $studentStmt->fetchAll(PDO::FETCH_ASSOC);
     $totals = [];
     foreach ($students as $student) {
-        $totals[(string)$student['id']] = ['joined' => 0, 'leave' => 0, 'absent' => 0, 'checked' => 0];
+        $totals[(string)$student['id']] = ['joined' => 0, 'leave' => 0, 'absent' => 0, 'checked' => 0, 'statuses' => []];
     }
 
     if ($activities && $students) {
@@ -1308,6 +1308,12 @@ function buildActivityReport($level, $room, $academicYear, $semester, $pdo) {
             elseif ($record['status'] === 'ลา (มีใบรับรองแพทย์)') $totals[$studentId]['leave'] += $count;
             elseif ($record['status'] === 'ไม่เข้าร่วมกิจกรรม') $totals[$studentId]['absent'] += $count;
         }
+        $statusStmt = $pdo->prepare("SELECT activity_id, student_id, status FROM activity_attendance WHERE level = ? AND room = ? AND activity_id IN ($placeholders)");
+        $statusStmt->execute(array_merge([$level, $room], $activityIds));
+        foreach ($statusStmt->fetchAll(PDO::FETCH_ASSOC) as $record) {
+            $studentId = (string)$record['student_id'];
+            if (isset($totals[$studentId])) $totals[$studentId]['statuses'][(string)(int)$record['activity_id']] = $record['status'];
+        }
     }
 
     $activityCount = count($activities);
@@ -1323,7 +1329,7 @@ function buildActivityReport($level, $room, $academicYear, $semester, $pdo) {
         if ($passed) $passedCount++;
         $reportStudents[] = [
             'no' => $student['no'], 'id' => $student['id'], 'name' => $student['name'],
-            'joined' => $counts['joined'], 'leave' => $counts['leave'], 'absent' => $counts['absent'],
+            'joined' => $counts['joined'], 'leave' => $counts['leave'], 'absent' => $counts['absent'], 'statuses' => $counts['statuses'],
             'unchecked' => max(0, $activityCount - $counts['checked']),
             'percent' => $percent, 'passed' => $passed
         ];

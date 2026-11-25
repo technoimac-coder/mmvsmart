@@ -4933,8 +4933,12 @@ function loadTeachersForClub() {
       if (!lastAdminActivityReport) return Swal.fire('ยังไม่มีรายงาน', 'กรุณากดดูรายงานก่อนส่งออก Excel', 'info');
       if (!window.XLSX) return Swal.fire('ไม่พร้อมใช้งาน', 'ไม่พบตัวส่งออก Excel กรุณารีเฟรชหน้าเว็บ', 'error');
       const report = lastAdminActivityReport;
-      const rows = [['รายงานเช็คกิจกรรมห้องเรียน'], ['ปีการศึกษา', report.academicYear, 'ภาคเรียนที่', Number(report.semester), 'ระดับชั้น', report.level, 'ห้อง', report.room === 'all' ? 'ทุกห้อง' : report.room], [], ['เลขที่','รหัสนักเรียน','ชื่อ-นามสกุล','ห้อง','เข้าร่วม','ลา','ไม่เข้าร่วม','ยังไม่เช็ก','ร้อยละ','ผล']];
-      (report.students || []).forEach(student => rows.push([student.no, student.id, student.name, student.room || report.room, Number(student.joined || 0), Number(student.leave || 0), Number(student.absent || 0), Number(student.unchecked || 0), Number(student.percent || 0) / 100, student.passed ? 'ผ่าน' : 'ไม่ผ่าน']));
+      const activityHeaders = (report.activities || []).map((item, index) => `${index + 1}. ${item.name} (${item.activityDate})`);
+      const rows = [['รายงานเช็คกิจกรรมห้องเรียน'], ['ปีการศึกษา', report.academicYear, 'ภาคเรียนที่', Number(report.semester), 'ระดับชั้น', report.level, 'ห้อง', report.room === 'all' ? 'ทุกห้อง' : report.room], [], ['เลขที่','รหัสนักเรียน','ชื่อ-นามสกุล','ห้อง', ...activityHeaders, 'เข้าร่วม','ลา','ไม่เข้าร่วม','ยังไม่เช็ก','ร้อยละ','ผล']];
+      (report.students || []).forEach(student => {
+        const statuses = (report.activities || []).map(item => student.statuses?.[String(item.id)] || 'ยังไม่เช็ก');
+        rows.push([student.no, student.id, student.name, student.room || report.room, ...statuses, Number(student.joined || 0), Number(student.leave || 0), Number(student.absent || 0), Number(student.unchecked || 0), Number(student.percent || 0) / 100, student.passed ? 'ผ่าน' : 'ไม่ผ่าน']);
+      });
       const ws = XLSX.utils.aoa_to_sheet(rows);
       ws['!cols'] = [{wch:8},{wch:16},{wch:30},{wch:8},{wch:10},{wch:8},{wch:12},{wch:12},{wch:10},{wch:12}];
       const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'รายงานกิจกรรม');
@@ -4969,6 +4973,8 @@ function loadTeachersForClub() {
         document.getElementById('btnExportAdminActivityExcel').disabled = false;
         const activities = res.activities || [];
         const students = res.students || [];
+        const reportHead = document.querySelector('#adminActivityReportTable thead tr');
+        if (reportHead) reportHead.innerHTML = `<th>เลขที่</th><th>รหัส</th><th>ชื่อ-นามสกุล</th>${activities.map((item, index) => `<th class="activity-report-head">${index + 1}. ${activityEscape(item.name)}<br><small>${activityEscape(item.activityDate)}</small></th>`).join('')}<th>เข้าร่วม</th><th>ลา</th><th>ไม่เข้าร่วม</th><th>ยังไม่เช็ก</th><th>ร้อยละ</th><th>ผล</th>`;
         summary.className = 'alert alert-info border py-2 mb-2';
         summary.innerHTML = `<b>ปี ${activityEscape(res.academicYear)} ภาคเรียนที่ ${Number(res.semester)}</b> · <b>${activityEscape(res.level)}/${activityEscape(res.room)}</b> · กิจกรรมทั้งหมด <b>${Number(res.activities?.length || 0)}</b> รายการ · นักเรียน <b>${Number(res.students?.length || 0)} คน</b> · เกณฑ์ผ่าน ${Number(res.passThreshold || 80)}%`;
         activityList.innerHTML = activities.length
@@ -5245,7 +5251,8 @@ function loadTeachersForClub() {
 
     function renderActivitySummaryRows(res) {
       const students = res.students || [];
-      if (!students.length) return '<tr><td colspan="9" class="text-center text-muted py-3">ไม่พบนักเรียนในห้องนี้</td></tr>';
+      const activities = res.activities || [];
+      if (!students.length) return `<tr><td colspan="${activities.length + 9}" class="text-center text-muted py-3">ไม่พบนักเรียนในห้องนี้</td></tr>`;
       let previousRoom = null;
       return students.map(student => {
         const room = res.room === 'all' ? String(student.room || '') : '';
@@ -5255,6 +5262,7 @@ function loadTeachersForClub() {
         <td class="text-center">${activityEscape(student.no)}</td>
         <td>${activityEscape(student.id)}</td>
         <td class="text-nowrap">${activityEscape(student.name)}${res.room === 'all' && student.room ? `<br><small class="text-muted">ห้อง ${activityEscape(student.room)}</small>` : ''}</td>
+        ${activities.map(activity => { const status = student.statuses?.[String(activity.id)] || ''; const label = status === 'ลา (มีใบรับรองแพทย์)' ? 'ลา' : status === 'ไม่เข้าร่วมกิจกรรม' ? 'ไม่เข้าร่วม' : status || '-'; return `<td class="text-center">${activityEscape(label)}</td>`; }).join('')}
         <td class="text-center text-success fw-bold">${Number(student.joined || 0)}</td>
         <td class="text-center text-info">${Number(student.leave || 0)}</td>
         <td class="text-center text-danger">${Number(student.absent || 0)}</td>
