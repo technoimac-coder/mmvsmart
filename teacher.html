@@ -570,6 +570,9 @@
     #tableClubAttendance { min-width: 0; width: 100%; }
     #tableClubAttendance th:last-child, #tableClubAttendance td:last-child { min-width: 110px; }
     #tableClubAttendance .club-status-btn { min-width: 48px; white-space: nowrap; flex: 0 0 48px !important; }
+    #adminActivityTable { min-width: 760px; }
+    #adminActivityTable th:last-child, #adminActivityTable td:last-child { min-width: 190px; white-space: nowrap; }
+    #adminActivityTable td:last-child .btn { white-space: nowrap; display: inline-flex; width: auto; }
     
     /* Clean Solid Soft Thematic Table Headers (No Gradients) */
     #dashDeductTable thead th, #tableAdminDeductLog thead th { 
@@ -633,6 +636,10 @@
       #tableClubAttendance th:nth-child(3), #tableClubAttendance td:nth-child(3) { width: 38% !important; }
       #tableClubAttendance th:nth-child(4), #tableClubAttendance td:nth-child(4) { width: 25% !important; min-width: 0 !important; }
       #tableClubAttendance .club-status-btn { min-width: 42px !important; flex: 1 1 42px !important; padding: 6px 2px !important; font-size: 0.78rem !important; white-space: nowrap !important; }
+      #adminActivityTable { table-layout: auto !important; width: 760px !important; min-width: 760px !important; }
+      #adminActivityTable th, #adminActivityTable td { white-space: normal !important; }
+      #adminActivityTable th:last-child, #adminActivityTable td:last-child { white-space: nowrap !important; min-width: 190px !important; }
+      .admin-activity-table-wrap { overflow-x: auto !important; }
     }
     
     .table-title { 
@@ -1758,7 +1765,7 @@
                   <button type="button" id="btnAdminSaveActivitiesBulk" class="btn text-white fw-bold flex-grow-1" style="background:#6d28d9;" onclick="saveAdminActivitiesBulk()"><i class="fas fa-save me-1"></i>บันทึกกิจกรรมทั้งหมด</button>
                 </div>
               </div>
-              <div class="table-responsive" style="max-height:360px;">
+              <div class="table-responsive admin-activity-table-wrap" style="max-height:360px;">
                 <table class="table table-sm table-bordered table-hover align-middle mb-0" id="adminActivityTable">
                   <thead class="position-sticky top-0" style="background:#ede9fe;"><tr><th>วันที่/เวลา</th><th>กิจกรรม</th><th>กลุ่มเป้าหมาย</th><th class="text-center">เช็กแล้ว</th><th class="text-center">สถานะ</th><th class="text-center">จัดการ</th></tr></thead>
                   <tbody><tr><td colspan="6" class="text-center text-muted py-3">กำลังโหลดกิจกรรม...</td></tr></tbody>
