@@ -1315,7 +1315,10 @@ function buildActivityReport($level, $room, $academicYear, $semester, $pdo) {
     $reportStudents = [];
     foreach ($students as $student) {
         $counts = $totals[(string)$student['id']];
-        $percent = $activityCount > 0 ? round(($counts['joined'] * 100) / $activityCount, 2) : 0;
+            // A medically certified leave is a recorded activity outcome and
+            // counts toward participation, while remaining reported separately.
+            $participated = $counts['joined'] + $counts['leave'];
+            $percent = $activityCount > 0 ? round(($participated * 100) / $activityCount, 2) : 0;
         $passed = $activityCount > 0 && $percent >= 80;
         if ($passed) $passedCount++;
         $reportStudents[] = [

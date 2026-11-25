@@ -5222,7 +5222,7 @@ function loadTeachersForClub() {
       if (!activityMatrixData) return;
       const activityCount = (activityMatrixData.activities || []).length;
       document.querySelectorAll('.activity-matrix tbody tr').forEach(row => {
-        const joined = Array.from(row.querySelectorAll('.activity-matrix-status')).filter(select => select.value === 'เข้าร่วม').length;
+        const joined = Array.from(row.querySelectorAll('.activity-matrix-status')).filter(select => select.value === 'เข้าร่วม' || select.value === 'ลา (มีใบรับรองแพทย์)').length;
         const percent = activityCount ? (joined * 100 / activityCount) : 0;
         row.querySelector('.matrix-joined').textContent = joined;
         row.querySelector('.matrix-percent').textContent = `${percent.toFixed(2)}%`;
