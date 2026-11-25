@@ -605,6 +605,14 @@
       .table-title, h1, h2, h3, h4, h5, h6 { overflow-wrap: anywhere; word-break: break-word; }
       .card .row, .card .d-flex { min-width: 0; }
       .btn, .form-control, .form-select { max-width: 100%; white-space: normal; }
+      /* Keep the six-column club overview readable on phones. */
+      .club-list-table-container { overflow-x: auto !important; }
+      #tableClubsList { table-layout: auto !important; width: 760px !important; min-width: 760px !important; }
+      #tableClubsList th, #tableClubsList td { white-space: normal !important; min-width: 90px !important; }
+      #tableClubsList th:nth-child(1), #tableClubsList td:nth-child(1) { min-width: 150px !important; }
+      #tableClubsList th:nth-child(3), #tableClubsList td:nth-child(3) { min-width: 220px !important; }
+      #tableClubsList th:last-child, #tableClubsList td:last-child { min-width: 150px !important; white-space: nowrap !important; }
+      #tableClubsList td:last-child .btn { white-space: nowrap !important; display: inline-flex; width: auto !important; }
     }
     
     .table-title { 
@@ -1404,7 +1412,7 @@
                 <h6 class="text-info fw-bold mb-0" style="color: #0891b2 !important;">📋 สมาชิกชุมนุมทั้งหมด</h6>
                 <button class="btn btn-sm btn-outline-info fw-bold" onclick="loadClubsTable()">🔄 โหลดล่าสุด</button>
               </div>
-              <div class="table-container">
+              <div class="table-container club-list-table-container">
                 <table class="table table-bordered table-sm mb-0" id="tableClubsList">
                   <thead style="background-color: #e0f8f7;">
                     <tr>
